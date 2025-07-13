@@ -1,0 +1,76 @@
+CREATE TABLE product_category_master (
+    product_category_id SERIAL PRIMARY KEY,
+    product_category_name VARCHAR(100) NOT NULL UNIQUE,
+    description VARCHAR(255),
+    active_flag CHAR(1) DEFAULT 'Y',  -- 'Y' for active, 'N' for inactive
+    created_by VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(100),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE TABLE product_feature_master (
+  feature_id SERIAL PRIMARY KEY,
+  feature_name VARCHAR(255) NOT NULL UNIQUE,      -- e.g., Battery Type, Max Speed
+  description TEXT,                               -- Optional: explain what this feature means
+  data_type VARCHAR(50) NOT NULL DEFAULT 'TEXT',  -- TEXT / NUMBER / BOOLEAN / DROPDOWN
+  unit VARCHAR(50),                               -- Optional: e.g., km/h, kg, Ah
+  active_flag CHAR(1) NOT NULL DEFAULT 'Y',       -- 'Y' or 'N'
+  created_by INT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_by INT,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE TABLE product_master (
+    product_id SERIAL PRIMARY KEY,
+    product_code VARCHAR(50) NOT NULL UNIQUE,
+    product_name VARCHAR(255) NOT NULL,
+    product_category_id INT NOT NULL REFERENCES product_category_master(product_category_id),
+    brand VARCHAR(100),
+    unit VARCHAR(20),                              -- E.g., 'Piece', 'Kg', 'Litre'
+    unit_price NUMERIC(10,2),                      -- Per unit price (for raw materials or costing)
+    bom_price NUMERIC(10,2), 
+    description TEXT,
+    hsn_code VARCHAR(20),
+    gst_percentage NUMERIC(5,2) DEFAULT 0.00,
+    purchase_gst_percentage NUMERIC(5,2) DEFAULT 0.00,
+
+    is_available_for_sale BOOLEAN DEFAULT TRUE,          -- ✅ New: Whether product is available for sale
+    serial_no_applicable BOOLEAN DEFAULT FALSE,          -- ✅ New: Whether serial number applies
+
+    product_type VARCHAR(50) DEFAULT 'FINISHED_GOOD',    -- ✅ New: 'FINISHED_GOOD', 'RAW_MATERIAL', 'ACCESSORY'
+    stock_uom VARCHAR(20),                               -- ✅ New: Inventory Unit of Measure (Kg, Box, Litre)
+    barcode_or_sku VARCHAR(100),                         -- ✅ New: Barcode or SKU code
+    image_url TEXT,                                       -- ✅ New: Optional product image
+    low_stock_threshold INT DEFAULT 0,                   -- ✅ New: Threshold for low stock alert
+    warranty_period_months INT,                          -- ✅ New: Warranty duration in months
+
+    active_flag CHAR(1) DEFAULT 'Y',                     -- 'Y' = active, 'N' = inactive
+
+    created_user_id INT REFERENCES users(user_id),       -- FK to users
+    created_by VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    updated_user_id INT REFERENCES users(user_id),       -- FK to users
+    updated_by VARCHAR(100),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
+CREATE TABLE product_feature_value (
+  id SERIAL PRIMARY KEY,
+  product_id INT NOT NULL REFERENCES product_master(product_id),
+  feature_id INT NOT NULL REFERENCES product_feature_master(feature_id),
+  feature_value VARCHAR(255),                     -- Store the actual value entered (text/number etc.)
+  active_flag CHAR(1) DEFAULT 'Y',
+  created_by INT REFERENCES users(user_id),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_by INT REFERENCES users(user_id),
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (product_id, feature_id)                 -- Prevent duplicate feature for the same product
+);
+

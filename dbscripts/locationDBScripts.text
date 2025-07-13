@@ -1,0 +1,310 @@
+CREATE TABLE state_master (
+    state_id SERIAL PRIMARY KEY,
+    state_name VARCHAR(100) NOT NULL UNIQUE
+);
+
+
+
+INSERT INTO state_master (state_name) VALUES
+('Andhra Pradesh'),
+('Arunachal Pradesh'),
+('Assam'),
+('Bihar'),
+('Chhattisgarh'),
+('Goa'),
+('Gujarat'),
+('Haryana'),
+('Himachal Pradesh'),
+('Jharkhand'),
+('Karnataka'),
+('Kerala'),
+('Madhya Pradesh'),
+('Maharashtra'),
+('Manipur'),
+('Meghalaya'),
+('Mizoram'),
+('Nagaland'),
+('Odisha'),
+('Punjab'),
+('Rajasthan'),
+('Sikkim'),
+('Tamil Nadu'),
+('Telangana'),
+('Tripura'),
+('Uttar Pradesh'),
+('Uttarakhand'),
+('West Bengal');
+
+
+
+CREATE TABLE district_master (
+    district_id SERIAL PRIMARY KEY,
+    district_name VARCHAR(150) NOT NULL,
+    state_id INTEGER NOT NULL REFERENCES state_master(state_id),
+    UNIQUE (district_name, state_id)
+);
+
+
+-- First get the state_id for West Bengal (assuming it's already inserted)
+-- For example, let's assume state_id for 'West Bengal' is 28. (You can check by SELECT * FROM state_master WHERE state_name = 'West Bengal';)
+
+-- Replace 28 with the actual state_id in your database
+INSERT INTO district_master (district_name, state_id) VALUES
+('Alipurduar', 28),
+('Bankura', 28),
+('Birbhum', 28),
+('Cooch Behar', 28),
+('Dakshin Dinajpur (South Dinajpur)', 28),
+('Darjeeling', 28),
+('Hooghly', 28),
+('Howrah', 28),
+('Jalpaiguri', 28),
+('Jhargram', 28),
+('Kalimpong', 28),
+('Kolkata', 28),
+('Malda', 28),
+('Murshidabad', 28),
+('Nadia', 28),
+('North 24 Parganas', 28),
+('Paschim Bardhaman (West Bardhaman)', 28),
+('Paschim Medinipur (West Midnapore)', 28),
+('Purba Bardhaman (East Bardhaman)', 28),
+('Purba Medinipur (East Midnapore)', 28),
+('Purulia', 28),
+('South 24 Parganas', 28),
+('Uttar Dinajpur (North Dinajpur)', 28);
+
+INSERT INTO district_master (district_name, state_id) VALUES
+('Araria', 4),
+('Arwal', 4),
+('Aurangabad', 4),
+('Banka', 4),
+('Begusarai', 4),
+('Bhagalpur', 4),
+('Bhojpur', 4),
+('Buxar', 4),
+('Darbhanga', 4),
+('East Champaran (Motihari)', 4),
+('Gaya', 4),
+('Gopalganj', 4),
+('Jamui', 4),
+('Jehanabad', 4),
+('Kaimur (Bhabua)', 4),
+('Katihar', 4),
+('Khagaria', 4),
+('Kishanganj', 4),
+('Lakhisarai', 4),
+('Madhepura', 4),
+('Madhubani', 4),
+('Munger (Monghyr)', 4),
+('Muzaffarpur', 4),
+('Nalanda', 4),
+('Nawada', 4),
+('Patna', 4),
+('Purnia (Purnea)', 4),
+('Rohtas', 4),
+('Saharsa', 4),
+('Samastipur', 4),
+('Saran', 4),
+('Sheikhpura', 4),
+('Sheohar', 4),
+('Sitamarhi', 4),
+('Siwan', 4),
+('Supaul', 4),
+('Vaishali', 4),
+('West Champaran (Bettiah)', 4);
+
+
+INSERT INTO district_master (district_name, state_id) VALUES
+('Bokaro', 10),
+('Chatra', 10),
+('Deoghar', 10),
+('Dhanbad', 10),
+('Dumka', 10),
+('East Singhbhum (Jamshedpur)', 10),
+('Garhwa', 10),
+('Giridih', 10),
+('Godda', 10),
+('Gumla', 10),
+('Hazaribagh', 10),
+('Jamtara', 10),
+('Khunti', 10),
+('Koderma', 10),
+('Latehar', 10),
+('Lohardaga', 10),
+('Pakur', 10),
+('Palamu', 10),
+('Ramgarh', 10),
+('Ranchi', 10),
+('Sahebganj (Sahibganj)', 10),
+('Seraikela Kharsawan', 10),
+('Simdega', 10),
+('West Singhbhum (Chaibasa)', 10);
+
+
+INSERT INTO district_master (district_name, state_id) VALUES
+('Agra', 26),
+('Aligarh', 26),
+('Ambedkar Nagar', 26),
+('Amethi', 26),
+('Amroha (J.P. Nagar)', 26),
+('Auraiya', 26),
+('Ayodhya (Faizabad)', 26),
+('Azamgarh', 26),
+('Baghpat', 26),
+('Bahraich', 26),
+('Ballia', 26),
+('Balrampur', 26),
+('Banda', 26),
+('Barabanki', 26),
+('Bareilly', 26),
+('Basti', 26),
+('Bhadohi (Sant Ravidas Nagar)', 26),
+('Bijnor', 26),
+('Budaun', 26),
+('Bulandshahr', 26),
+('Chandauli', 26),
+('Chitrakoot', 26),
+('Deoria', 26),
+('Etah', 26),
+('Etawah', 26),
+('Farrukhabad', 26),
+('Fatehpur', 26),
+('Firozabad', 26),
+('Gautam Buddha Nagar (Noida)', 26),
+('Ghaziabad', 26),
+('Ghazipur', 26),
+('Gonda', 26),
+('Gorakhpur', 26),
+('Hamirpur', 26),
+('Hapur (Panchsheel Nagar)', 26),
+('Hardoi', 26),
+('Hathras (Mahamaya Nagar)', 26),
+('Jalaun', 26),
+('Jaunpur', 26),
+('Jhansi', 26),
+('Kannauj', 26),
+('Kanpur Dehat (Ramabai Nagar)', 26),
+('Kanpur Nagar', 26),
+('Kasganj (Kanshiram Nagar)', 26),
+('Kaushambi', 26),
+('Kheri (Lakhimpur Kheri)', 26),
+('Kushinagar (Padrauna)', 26),
+('Lalitpur', 26),
+('Lucknow', 26),
+('Maharajganj', 26),
+('Mahoba', 26),
+('Mainpuri', 26),
+('Mathura', 26),
+('Mau', 26),
+('Meerut', 26),
+('Mirzapur', 26),
+('Moradabad', 26),
+('Muzaffarnagar', 26),
+('Pilibhit', 26),
+('Pratapgarh', 26),
+('Prayagraj (Allahabad)', 26),
+('Raebareli', 26),
+('Rampur', 26),
+('Saharanpur', 26),
+('Sambhal (Bhim Nagar)', 26),
+('Sant Kabir Nagar', 26),
+('Shahjahanpur', 26),
+('Shamli (Prabuddh Nagar)', 26),
+('Shravasti', 26),
+('Siddharthnagar', 26),
+('Sitapur', 26),
+('Sonbhadra', 26),
+('Sultanpur', 26),
+('Unnao', 26),
+('Varanasi', 26);
+
+
+
+
+
+
+CREATE TABLE location_type_master (
+    location_type_id SERIAL PRIMARY KEY,
+    location_type_name VARCHAR(100) NOT NULL UNIQUE,
+    active_flag CHAR(1) DEFAULT 'Y',
+    description VARCHAR(100),
+    created_by VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(100),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE location_master (
+    location_id SERIAL PRIMARY KEY,
+    location_name VARCHAR(150) NOT NULL,
+    address TEXT NOT NULL,
+    state_id INTEGER NOT NULL REFERENCES state_master(state_id),
+    district_id INTEGER NOT NULL REFERENCES district_master(district_id),
+    pincode VARCHAR(10),
+    
+    created_by VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(100),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    active_flag CHAR(1) DEFAULT 'Y',
+
+    CONSTRAINT fk_state_district FOREIGN KEY (district_id)
+      REFERENCES district_master(district_id)
+);
+
+CREATE TABLE location_type_mapping (
+    id SERIAL PRIMARY KEY,
+    location_id INTEGER NOT NULL REFERENCES location_master(location_id) ON DELETE CASCADE,
+    location_type_id INTEGER NOT NULL REFERENCES location_type_master(location_type_id),
+
+    UNIQUE (location_id, location_type_id)
+);
+
+
+CREATE TABLE user_location_mapping (
+    id SERIAL PRIMARY KEY,
+
+    user_id INTEGER NOT NULL,
+    location_id INTEGER NOT NULL,
+
+    active_flag CHAR(1) DEFAULT 'Y', -- 'Y' for active, 'N' for inactive
+
+    assigned_by VARCHAR(100), -- Who assigned this mapping (e.g., login_id)
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    created_by VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    updated_by VARCHAR(100),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_ulm_user FOREIGN KEY (user_id) REFERENCES users(user_id),
+    CONSTRAINT fk_ulm_location FOREIGN KEY (location_id) REFERENCES location_master(location_id),
+    CONSTRAINT uq_user_location UNIQUE (user_id, location_id)
+);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

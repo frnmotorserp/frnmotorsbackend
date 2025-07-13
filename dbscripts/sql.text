@@ -1,0 +1,197 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.access_master (
+  access_type_id integer NOT NULL DEFAULT nextval('access_master_access_type_id_seq'::regclass),
+  access_type character varying NOT NULL,
+  CONSTRAINT access_master_pkey PRIMARY KEY (access_type_id)
+);
+CREATE TABLE public.district_master (
+  district_id integer NOT NULL DEFAULT nextval('district_master_district_id_seq'::regclass),
+  district_name character varying NOT NULL,
+  state_id integer NOT NULL,
+  CONSTRAINT district_master_pkey PRIMARY KEY (district_id),
+  CONSTRAINT district_master_state_id_fkey FOREIGN KEY (state_id) REFERENCES public.state_master(state_id)
+);
+CREATE TABLE public.function_master (
+  function_master_id integer NOT NULL DEFAULT nextval('function_master_function_master_id_seq'::regclass),
+  function_short_name character varying NOT NULL,
+  function_name character varying,
+  main_sort_order smallint,
+  CONSTRAINT function_master_pkey PRIMARY KEY (function_master_id)
+);
+CREATE TABLE public.initial_table (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT initial_table_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.location_master (
+  location_id integer NOT NULL DEFAULT nextval('location_master_location_id_seq'::regclass),
+  location_name character varying NOT NULL,
+  address text NOT NULL,
+  state_id integer NOT NULL,
+  district_id integer NOT NULL,
+  pincode character varying,
+  created_by character varying,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_by character varying,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  active_flag character DEFAULT 'Y'::bpchar,
+  CONSTRAINT location_master_pkey PRIMARY KEY (location_id),
+  CONSTRAINT location_master_state_id_fkey FOREIGN KEY (state_id) REFERENCES public.state_master(state_id),
+  CONSTRAINT fk_state_district FOREIGN KEY (district_id) REFERENCES public.district_master(district_id),
+  CONSTRAINT location_master_district_id_fkey FOREIGN KEY (district_id) REFERENCES public.district_master(district_id)
+);
+CREATE TABLE public.location_type_mapping (
+  id integer NOT NULL DEFAULT nextval('location_type_mapping_id_seq'::regclass),
+  location_id integer NOT NULL,
+  location_type_id integer NOT NULL,
+  CONSTRAINT location_type_mapping_pkey PRIMARY KEY (id),
+  CONSTRAINT location_type_mapping_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.location_master(location_id),
+  CONSTRAINT location_type_mapping_location_type_id_fkey FOREIGN KEY (location_type_id) REFERENCES public.location_type_master(location_type_id)
+);
+CREATE TABLE public.location_type_master (
+  location_type_id integer NOT NULL DEFAULT nextval('location_type_master_location_type_id_seq'::regclass),
+  location_type_name character varying NOT NULL UNIQUE,
+  active_flag character DEFAULT 'Y'::bpchar,
+  created_by character varying,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_by character varying,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  description text,
+  CONSTRAINT location_type_master_pkey PRIMARY KEY (location_type_id)
+);
+CREATE TABLE public.product_category_master (
+  product_category_id integer NOT NULL DEFAULT nextval('product_category_master_product_category_id_seq'::regclass),
+  product_category_name character varying NOT NULL UNIQUE,
+  description character varying,
+  active_flag character DEFAULT 'Y'::bpchar,
+  created_by character varying,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_by character varying,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT product_category_master_pkey PRIMARY KEY (product_category_id)
+);
+CREATE TABLE public.product_feature_master (
+  feature_id integer NOT NULL DEFAULT nextval('product_feature_master_feature_id_seq'::regclass),
+  feature_name character varying NOT NULL UNIQUE,
+  description text,
+  data_type character varying NOT NULL DEFAULT 'TEXT'::character varying,
+  unit character varying,
+  active_flag character NOT NULL DEFAULT 'Y'::bpchar,
+  created_by integer,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_by integer,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT product_feature_master_pkey PRIMARY KEY (feature_id)
+);
+CREATE TABLE public.product_feature_value (
+  id integer NOT NULL DEFAULT nextval('product_feature_value_id_seq'::regclass),
+  product_id integer NOT NULL,
+  feature_id integer NOT NULL,
+  feature_value character varying,
+  active_flag character DEFAULT 'Y'::bpchar,
+  created_by integer,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_by integer,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT product_feature_value_pkey PRIMARY KEY (id),
+  CONSTRAINT product_feature_value_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.product_master(product_id),
+  CONSTRAINT product_feature_value_feature_id_fkey FOREIGN KEY (feature_id) REFERENCES public.product_feature_master(feature_id),
+  CONSTRAINT product_feature_value_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(user_id),
+  CONSTRAINT product_feature_value_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(user_id)
+);
+CREATE TABLE public.product_master (
+  product_id integer NOT NULL DEFAULT nextval('product_master_product_id_seq'::regclass),
+  product_code character varying NOT NULL UNIQUE,
+  product_name character varying NOT NULL,
+  product_category_id integer NOT NULL,
+  brand character varying,
+  unit character varying,
+  unit_price numeric,
+  description text,
+  hsn_code character varying,
+  gst_percentage numeric DEFAULT 0.00,
+  is_available_for_sale boolean DEFAULT true,
+  serial_no_applicable boolean DEFAULT false,
+  product_type character varying DEFAULT 'FINISHED_GOOD'::character varying,
+  stock_uom character varying,
+  barcode_or_sku character varying,
+  image_url text,
+  low_stock_threshold integer DEFAULT 0,
+  warranty_period_months integer,
+  active_flag character DEFAULT 'Y'::bpchar,
+  created_user_id integer,
+  created_by character varying,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_user_id integer,
+  updated_by character varying,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT product_master_pkey PRIMARY KEY (product_id),
+  CONSTRAINT product_master_product_category_id_fkey FOREIGN KEY (product_category_id) REFERENCES public.product_category_master(product_category_id),
+  CONSTRAINT product_master_updated_user_id_fkey FOREIGN KEY (updated_user_id) REFERENCES public.users(user_id),
+  CONSTRAINT product_master_created_user_id_fkey FOREIGN KEY (created_user_id) REFERENCES public.users(user_id)
+);
+CREATE TABLE public.role_function_access_map (
+  role_id integer NOT NULL,
+  sub_function_master_id integer NOT NULL,
+  access_type_id integer NOT NULL,
+  CONSTRAINT role_function_access_map_pkey PRIMARY KEY (role_id, sub_function_master_id, access_type_id),
+  CONSTRAINT role_function_access_map_sub_function_master_id_fkey FOREIGN KEY (sub_function_master_id) REFERENCES public.sub_function_master(sub_function_master_id),
+  CONSTRAINT role_function_access_map_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(role_id),
+  CONSTRAINT role_function_access_map_access_type_id_fkey FOREIGN KEY (access_type_id) REFERENCES public.access_master(access_type_id)
+);
+CREATE TABLE public.roles (
+  role_id integer NOT NULL DEFAULT nextval('roles_id_seq'::regclass),
+  role_name character varying NOT NULL UNIQUE,
+  role_short_name character varying NOT NULL,
+  CONSTRAINT roles_pkey PRIMARY KEY (role_id)
+);
+CREATE TABLE public.state_master (
+  state_id integer NOT NULL DEFAULT nextval('state_master_state_id_seq'::regclass),
+  state_name character varying NOT NULL UNIQUE,
+  CONSTRAINT state_master_pkey PRIMARY KEY (state_id)
+);
+CREATE TABLE public.sub_function_master (
+  sub_function_master_id integer NOT NULL DEFAULT nextval('sub_function_master_sub_function_master_id_seq'::regclass),
+  function_master_id integer,
+  sub_function_short_name character varying NOT NULL,
+  sub_function_name character varying,
+  sub_sort_order smallint,
+  CONSTRAINT sub_function_master_pkey PRIMARY KEY (sub_function_master_id),
+  CONSTRAINT sub_function_master_function_master_id_fkey FOREIGN KEY (function_master_id) REFERENCES public.function_master(function_master_id)
+);
+CREATE TABLE public.user_location_mapping (
+  id integer NOT NULL DEFAULT nextval('user_location_mapping_id_seq'::regclass),
+  user_id integer NOT NULL,
+  location_id integer NOT NULL,
+  active_flag character DEFAULT 'Y'::bpchar,
+  assigned_by character varying,
+  assigned_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  created_by character varying,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_by character varying,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT user_location_mapping_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_ulm_location FOREIGN KEY (location_id) REFERENCES public.location_master(location_id),
+  CONSTRAINT fk_ulm_user FOREIGN KEY (user_id) REFERENCES public.users(user_id)
+);
+CREATE TABLE public.users (
+  user_id integer NOT NULL DEFAULT nextval('users_id_seq'::regclass),
+  first_name character varying NOT NULL,
+  middle_name character varying,
+  last_name character varying NOT NULL,
+  login_id character varying NOT NULL UNIQUE,
+  role_id integer NOT NULL,
+  primary_mobile character varying NOT NULL,
+  secondary_mobile character varying,
+  primary_email character varying NOT NULL,
+  alternative_email character varying,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  user_active_flag text DEFAULT 'Y'::text,
+  first_login_flag boolean DEFAULT true,
+  password text,
+  CONSTRAINT users_pkey PRIMARY KEY (user_id),
+  CONSTRAINT users_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(role_id)
+);

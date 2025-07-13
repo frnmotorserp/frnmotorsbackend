@@ -1,0 +1,27 @@
+CREATE TABLE bom_master (
+    bom_id SERIAL PRIMARY KEY,
+    product_id INT NOT NULL REFERENCES product_master(product_id),
+    bom_name VARCHAR(100) NOT NULL,
+    version VARCHAR(50),
+    remarks TEXT,
+    active_flag CHAR(1) DEFAULT 'Y',
+    
+    created_by VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(100),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE TABLE bom_components (
+    component_id SERIAL PRIMARY KEY,
+    bom_id INT NOT NULL REFERENCES bom_master(bom_id),
+    component_product_id INT NOT NULL REFERENCES product_master(product_id),  -- Component being used
+    quantity NUMERIC(10,2) NOT NULL,
+    
+    parent_component_id INT REFERENCES bom_components(component_id), -- 🔁 Self-reference for multi-level BOM
+    
+    remarks TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
