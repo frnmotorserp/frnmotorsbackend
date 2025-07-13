@@ -17,7 +17,8 @@ const PORT = process.env.PORT || 5080;
 
 // Enable All CORS Requests
 app.use(cors({
-  origin: 'http://localhost:4000',  
+  //origin: 'http://localhost:4000',  
+  origin: "https://erpsfrontend.onrender.com",  
   credentials: true,               
 }));
 app.use(express.json());
