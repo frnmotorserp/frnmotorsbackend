@@ -7,6 +7,7 @@ import authRoutes from './routes/authRoutes.js';
 import userAccessRoutes from './routes/userAccessRoutes.js';
 import locationRoutes from './routes/locationManagementRoutes.js'
 import productManagementRoutes from './routes/productManagementRoutes.js'
+import vendorManagementRoutes from './routes/vendorManagementRoutes.js'
 
 
 
@@ -34,6 +35,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/roleMap', userAccessRoutes);
 app.use('/api/location', locationRoutes);
 app.use('/api/product', productManagementRoutes);
+app.use('/api/vendor', vendorManagementRoutes);
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);

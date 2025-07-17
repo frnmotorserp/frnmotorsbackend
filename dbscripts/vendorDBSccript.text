@@ -1,0 +1,94 @@
+-- VENDOR MASTER TABLE
+CREATE TABLE vendor_master (
+    vendor_id SERIAL PRIMARY KEY,
+    vendor_code VARCHAR(20) UNIQUE NOT NULL,
+    vendor_name VARCHAR(100) NOT NULL,
+    vendor_type TEXT,
+    gstin VARCHAR(20),
+    pan VARCHAR(10),
+    email VARCHAR(100),
+    phone VARCHAR(20),
+    website VARCHAR(100),
+    status BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- VENDOR ADDRESS TABLE
+CREATE TABLE vendor_address (
+    address_id SERIAL PRIMARY KEY,
+    vendor_id INT NOT NULL,
+    address_type VARCHAR(20) NOT NULL,
+    address_line1 TEXT NOT NULL,
+    address_line2 TEXT,
+    city VARCHAR(100),
+    state INT,
+    state_name VARCHAR(100),
+    district VARCHAR(100),
+    pincode VARCHAR(10),
+    country VARCHAR(100) DEFAULT 'India',
+    is_primary BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (vendor_id) REFERENCES vendor_master(vendor_id) ON DELETE CASCADE
+);
+
+-- VENDOR CONTACT TABLE
+CREATE TABLE vendor_contact (
+    contact_id SERIAL PRIMARY KEY,
+    vendor_id INT NOT NULL,
+    contact_name VARCHAR(100) NOT NULL,
+    designation VARCHAR(50),
+    email VARCHAR(100),
+    phone VARCHAR(20),
+    is_primary BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (vendor_id) REFERENCES vendor_master(vendor_id) ON DELETE CASCADE
+);
+
+-- VENDOR BANK DETAILS TABLE
+CREATE TABLE vendor_bank_details (
+    bank_id SERIAL PRIMARY KEY,
+    vendor_id INT NOT NULL,
+    account_holder_name VARCHAR(100),
+    account_number VARCHAR(30),
+    ifsc_code VARCHAR(20),
+    bank_name VARCHAR(100),
+    branch_name VARCHAR(100),
+    is_primary BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (vendor_id) REFERENCES vendor_master(vendor_id) ON DELETE CASCADE
+);
+
+-- VENDOR DOCUMENTS TABLE
+CREATE TABLE vendor_documents (
+    document_id SERIAL PRIMARY KEY,
+    vendor_id INT NOT NULL,
+    document_type VARCHAR(50),
+    document_name VARCHAR(100),
+    document_url TEXT,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (vendor_id) REFERENCES vendor_master(vendor_id) ON DELETE CASCADE
+);
+
+-- VENDOR RATING HISTORY TABLE
+CREATE TABLE vendor_rating_history (
+    rating_id SERIAL PRIMARY KEY,
+    vendor_id INT NOT NULL,
+    rating_score NUMERIC(2,1),
+    rated_by VARCHAR(100),
+    remarks TEXT,
+    rating_date DATE DEFAULT CURRENT_DATE,
+    FOREIGN KEY (vendor_id) REFERENCES vendor_master(vendor_id) ON DELETE CASCADE
+);
+
+-- VENDOR CATEGORY MASTER TABLE
+CREATE TABLE vendor_category (
+    category_id SERIAL PRIMARY KEY,
+    category_name VARCHAR(100) NOT NULL UNIQUE
+);
+
+-- VENDOR CATEGORY MAPPING TABLE
+CREATE TABLE vendor_category_map (
+    id SERIAL PRIMARY KEY,
+    vendor_id INT NOT NULL,
+    category_id INT NOT NULL,
+    FOREIGN KEY (vendor_id) REFERENCES vendor_master(vendor_id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES vendor_category(category_id) ON DELETE CASCADE
+);
