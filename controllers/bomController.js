@@ -10,6 +10,7 @@ export const saveOrUpdateBOMController = async (req, res) => {
     const {
       dataAccessDTO,
       productId,
+      bomName,
       totalQuantity,
       remarks,
       componentList = []
@@ -30,6 +31,7 @@ export const saveOrUpdateBOMController = async (req, res) => {
       productId,
       totalQuantity,
       remarks,
+      bomName,
       componentList,
       userId: dataAccessDTO?.userId,
       userName: dataAccessDTO?.userName

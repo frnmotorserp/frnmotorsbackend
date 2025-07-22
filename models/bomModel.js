@@ -16,7 +16,7 @@ export const saveOrUpdateBOM = async (bomDTO) => {
   try {
     const {
       productId,
-      bomName = "Demo",
+      bomName,
       version = null,
       remarks,
       componentList = [],

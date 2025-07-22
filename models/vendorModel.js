@@ -127,17 +127,92 @@ export const saveOrUpdateVendor = async (vendorDTO) => {
     }
 
     // Clean and re-insert details
-    await client.query(`DELETE FROM vendor_address WHERE vendor_id = $1`, [savedVendorId]);
+    //await client.query(`DELETE FROM vendor_address WHERE vendor_id = $1`, [savedVendorId]);
     await client.query(`DELETE FROM vendor_contact WHERE vendor_id = $1`, [savedVendorId]);
     await client.query(`DELETE FROM vendor_bank_details WHERE vendor_id = $1`, [savedVendorId]);
 
+    // for (const addr of addresses) {
+    //   await client.query(`
+    //     INSERT INTO vendor_address
+    //     (vendor_id, address_type, address_line1, address_line2, city, state, district, pincode, country, is_primary, state_name)
+    //     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+    //   `, [savedVendorId, addr.addressType, addr.addressLine1, addr.addressLine2, addr.city, addr.state, addr.district, addr.pincode, addr.country, addr.isPrimary, addr.stateName]);
+    // }
+
+    // 1. Get all existing address_ids for this vendor
+    const { rows: existingAddresses } = await client.query(
+      `SELECT address_id FROM vendor_address WHERE vendor_id = $1`,
+      [savedVendorId]
+    );
+    const existingAddressIds = existingAddresses.map(row => row.address_id);
+
+    // 2. Keep track of submitted address_ids
+    const submittedAddressIds = [];
+
+    // 3. Loop through submitted addresses
     for (const addr of addresses) {
-      await client.query(`
-        INSERT INTO vendor_address
-        (vendor_id, address_type, address_line1, address_line2, city, state, district, pincode, country, is_primary, state_name)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-      `, [savedVendorId, addr.addressType, addr.addressLine1, addr.addressLine2, addr.city, addr.state, addr.district, addr.pincode, addr.country, addr.isPrimary, addr.stateName]);
+      if (addr.addressId) {
+        // Update existing address
+        submittedAddressIds.push(addr.addressId);
+        await client.query(`
+          UPDATE vendor_address
+          SET address_type = $1,
+              address_line1 = $2,
+              address_line2 = $3,
+              city = $4,
+              state = $5,
+              state_name = $6,
+              district = $7,
+              pincode = $8,
+              country = $9,
+              is_primary = $10
+          WHERE address_id = $11 AND vendor_id = $12
+        `, [
+          addr.addressType,
+          addr.addressLine1,
+          addr.addressLine2,
+          addr.city,
+          addr.state,
+          addr.stateName,
+          addr.district,
+          addr.pincode,
+          addr.country || 'India',
+          addr.isPrimary || false,
+          addr.addressId,
+          savedVendorId
+        ]);
+      } else {
+        // Insert new address
+        await client.query(`
+          INSERT INTO vendor_address
+          (vendor_id, address_type, address_line1, address_line2, city, state, state_name, district, pincode, country, is_primary)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+        `, [
+          savedVendorId,
+          addr.addressType,
+          addr.addressLine1,
+          addr.addressLine2,
+          addr.city,
+          addr.state,
+          addr.stateName,
+          addr.district,
+          addr.pincode,
+          addr.country || 'India',
+          addr.isPrimary || false
+        ]);
+      }
     }
+
+    // 4. Delete old addresses not in submitted list
+    const addressIdsToDelete = existingAddressIds.filter(id => !submittedAddressIds.includes(id));
+
+    if (addressIdsToDelete.length > 0) {
+      await client.query(`
+        DELETE FROM vendor_address
+        WHERE vendor_id = $1 AND address_id = ANY($2::int[])
+      `, [savedVendorId, addressIdsToDelete]);
+}
+
 
     for (const contact of contacts) {
       await client.query(`

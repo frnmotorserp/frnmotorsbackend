@@ -1,0 +1,45 @@
+CREATE TABLE purchase_order (
+    po_id SERIAL PRIMARY KEY,
+    po_number VARCHAR(50) UNIQUE NOT NULL,
+    vendor_id INT NOT NULL,
+    vendor_location_id INT,
+    delivery_location_id INT,
+    po_date DATE NOT NULL,
+    expected_delivery_date DATE,
+    shipping_address TEXT,
+    billing_address TEXT,
+    payment_terms TEXT,
+    delivery_terms TEXT,
+    total_amount NUMERIC(12, 2) DEFAULT 0.0,
+    cgst_amount NUMERIC(12, 2) DEFAULT 0.0,
+    sgst_amount NUMERIC(12, 2) DEFAULT 0.0,
+    igst_amount NUMERIC(12, 2) DEFAULT 0.0,
+    tax_type VARCHAR(10), -- 'INTRA' or 'INTER'
+    status VARCHAR(20) DEFAULT 'Draft', -- Draft, Approved, Partially Received, Completed, Cancelled
+    remarks TEXT,
+    created_by VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (vendor_id) REFERENCES vendor_master(vendor_id) ON DELETE SET NULL
+);
+
+
+CREATE TABLE purchase_order_item (
+    po_item_id SERIAL PRIMARY KEY,
+    po_id INT NOT NULL,
+    product_id INT NOT NULL,
+    product_description TEXT,
+    quantity NUMERIC(10, 2) NOT NULL,
+    unit_price NUMERIC(12, 2) NOT NULL,
+    uom VARCHAR(20), -- Unit of Measure (e.g., KG, PCS, LTR)
+    cgst_percent NUMERIC(5,2),
+    sgst_percent NUMERIC(5,2),
+    igst_percent NUMERIC(5,2),
+    cgst_amount NUMERIC(12,2) DEFAULT 0.0,
+    sgst_amount NUMERIC(12,2) DEFAULT 0.0,
+    igst_amount NUMERIC(12,2) DEFAULT 0.0,
+    total_amount NUMERIC(12, 2) NOT NULL,
+    FOREIGN KEY (po_id) REFERENCES purchase_order(po_id) ON DELETE CASCADE
+    FOREIGN KEY (product_id) REFERENCES product_master(product_id) ON DELETE RESTRICT
+    -- link product_id to your product_master table
+);

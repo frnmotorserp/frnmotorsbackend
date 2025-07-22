@@ -18,7 +18,7 @@ CREATE TABLE vendor_master (
 CREATE TABLE vendor_address (
     address_id SERIAL PRIMARY KEY,
     vendor_id INT NOT NULL,
-    address_type VARCHAR(20) NOT NULL,
+    address_type TEXT,
     address_line1 TEXT NOT NULL,
     address_line2 TEXT,
     city VARCHAR(100),
