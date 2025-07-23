@@ -1,5 +1,5 @@
 import { getInvoicesByFilters, saveOrUpdateInvoice,  syncPaymentsForInvoice,
-  getPaymentsByInvoiceId } from "../models/inVoicePaymentModel.js";
+  getPaymentsByInvoiceId } from "../models/invoicePaymentModel.js";
 // Get Invoices by Filters (vendorId, poId, startDate, endDate)
 export const getInvoicesByFiltersController = async (req, res) => {
   try {
