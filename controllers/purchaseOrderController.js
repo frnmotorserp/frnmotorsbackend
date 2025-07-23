@@ -2,7 +2,9 @@ import {
   saveOrUpdatePO,
   getPOsByDateRange,
   getPOSummaryDetail,
-  getPOItemsByPOId 
+  getPOItemsByPOId,
+  updatePOStatus,
+  getPOsByVendor
 } from "../models/purchaseOrderModel.js";
 
 // 1. Save or Update Purchase Order
@@ -127,5 +129,57 @@ export const getPOItemsByPOIdController = async (req, res) => {
       message: 'Failed to fetch PO Items',
       responseObject: []
     });
+  }
+};
+
+// 5. Update PO Status
+export const updatePOStatusController = async (req, res) => {
+  try {
+    const { poId, status, updatedBy } = req.body;
+
+    // Validate input
+    if (!poId || !status || !updatedBy) {
+      return res.status(400).json({
+        sessionDTO: { status: false, reasonCode: 'validation_error' },
+        status: false,
+        message: 'PO ID, status, and updatedBy are required.',
+        responseObject: []
+      });
+    }
+
+    const result = await updatePOStatus(poId, status, updatedBy);
+
+    res.json({
+      sessionDTO: { status: true, reasonCode: 'success' },
+      status: true,
+      message: 'PO status updated successfully.',
+      responseObject: result
+    });
+
+  } catch (error) {
+    console.error('Error updating PO status:', error);
+    res.status(500).json({
+      sessionDTO: { status: false, reasonCode: 'error' },
+      status: false,
+      message: 'Failed to update PO status',
+      responseObject: []
+    });
+  }
+};
+
+
+export const getPOsByVendorController = async (req, res) => {
+  const { vendorId } = req.body;
+
+  if (!vendorId || isNaN(vendorId)) {
+    return res.status(400).json({ success: false, message: 'Invalid vendor ID.' });
+  }
+
+  try {
+    const data = await getPOsByVendor(vendorId);
+    res.status(200).json({ 'status': true, responseObject: data });
+  } catch (error) {
+    console.error('Error fetching POs by vendor:', error);
+    res.status(500).json({ 'status': false, 'message': 'Internal server error.', "responseObject": [] });
   }
 };

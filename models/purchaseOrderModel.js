@@ -142,3 +142,39 @@ export const getPOItemsByPOId = async (poId) => {
     client.release();
   }
 };
+
+
+// Update PO Status
+export const updatePOStatus = async (poId, newStatus, updatedBy) => {
+  const query = `
+    UPDATE purchase_order
+    SET status = $1,
+        updated_at = NOW()
+    WHERE po_id = $2
+    RETURNING *;
+  `;
+
+  const values = [newStatus, poId];
+
+  try {
+    const { rows } = await pool.query(query, values);
+    if (rows.length === 0) {
+      throw new Error(`No PO found with id ${poId}`);
+    }
+    return { success: true, data: rows[0] };
+  } catch (error) {
+    console.error('Error updating PO status:', error);
+    throw error;
+  }
+};
+
+
+export const getPOsByVendor = async ( vendorId) => {
+  const query = `
+    SELECT po_id, po_number, total_amount, payment_terms, status FROM purchase_order
+    WHERE vendor_id = $1
+    ORDER BY po_date DESC;
+  `;
+  const { rows } = await pool.query(query, [vendorId]);
+  return rows;
+};

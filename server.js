@@ -9,6 +9,7 @@ import locationRoutes from './routes/locationManagementRoutes.js'
 import productManagementRoutes from './routes/productManagementRoutes.js'
 import vendorManagementRoutes from './routes/vendorManagementRoutes.js'
 import purchaseOrderManagementRoutes from './routes/purchaseOrderManagementRoutes.js'
+import invoicePaymentManagementRoutes from './routes/invoicePaymentManagementRoutes.js'
 
 
 
@@ -38,7 +39,8 @@ app.use('/api/location', locationRoutes);
 app.use('/api/product', productManagementRoutes);
 app.use('/api/vendor', vendorManagementRoutes);
 app.use('/api/po', purchaseOrderManagementRoutes);
+app.use('/api/invoice', invoicePaymentManagementRoutes);
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });

@@ -1,0 +1,41 @@
+CREATE TABLE invoice_master (
+    invoice_id SERIAL PRIMARY KEY,
+    po_id INTEGER NOT NULL,
+    vendor_id INTEGER NOT NULL,
+    invoice_number VARCHAR(100) NOT NULL,
+    invoice_date DATE NOT NULL,
+    invoice_amount NUMERIC(12, 2) NOT NULL,  -- Base amount before tax
+
+    cgst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    sgst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    igst_amount NUMERIC(12, 2) DEFAULT 0.00,
+
+    total_tax_amount NUMERIC(12, 2),
+
+    total_invoice_amount NUMERIC(12, 2),
+
+    payment_status VARCHAR(50) DEFAULT 'PENDING', -- PENDING / PARTIAL / PAID
+    remarks TEXT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_po_id FOREIGN KEY (po_id) REFERENCES purchase_order(po_id) ON DELETE CASCADE,
+    CONSTRAINT fk_vendor_id FOREIGN KEY (vendor_id) REFERENCES vendor_master(vendor_id) ON DELETE CASCADE
+);
+
+
+CREATE TABLE payment_tracking_master (
+    payment_id SERIAL PRIMARY KEY,
+    invoice_id INTEGER NOT NULL,
+    vendor_id INTEGER NOT NULL,
+    payment_date DATE NOT NULL,
+    payment_amount NUMERIC(12, 2) NOT NULL,
+    payment_mode VARCHAR(50),  -- UPI / NEFT / Cheque etc.
+    transaction_reference VARCHAR(100),
+    payment_notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_invoice_id FOREIGN KEY (invoice_id) REFERENCES invoice_master(invoice_id) ON DELETE CASCADE,
+    CONSTRAINT fk_vendor_id FOREIGN KEY (vendor_id) REFERENCES vendor_master(vendor_id) ON DELETE CASCADE
+);
