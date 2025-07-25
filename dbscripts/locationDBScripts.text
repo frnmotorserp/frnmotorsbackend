@@ -45,10 +45,7 @@ CREATE TABLE district_master (
 );
 
 
--- First get the state_id for West Bengal (assuming it's already inserted)
--- For example, let's assume state_id for 'West Bengal' is 28. (You can check by SELECT * FROM state_master WHERE state_name = 'West Bengal';)
 
--- Replace 28 with the actual state_id in your database
 INSERT INTO district_master (district_name, state_id) VALUES
 ('Alipurduar', 28),
 ('Bankura', 28),
@@ -269,9 +266,9 @@ CREATE TABLE user_location_mapping (
     user_id INTEGER NOT NULL,
     location_id INTEGER NOT NULL,
 
-    active_flag CHAR(1) DEFAULT 'Y', -- 'Y' for active, 'N' for inactive
+    active_flag CHAR(1) DEFAULT 'Y', 
 
-    assigned_by VARCHAR(100), -- Who assigned this mapping (e.g., login_id)
+    assigned_by VARCHAR(100), 
     assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     created_by VARCHAR(100),

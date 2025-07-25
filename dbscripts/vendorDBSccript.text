@@ -1,4 +1,4 @@
--- VENDOR MASTER TABLE
+
 CREATE TABLE vendor_master (
     vendor_id SERIAL PRIMARY KEY,
     vendor_code VARCHAR(20) UNIQUE NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE vendor_master (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- VENDOR ADDRESS TABLE
+
 CREATE TABLE vendor_address (
     address_id SERIAL PRIMARY KEY,
     vendor_id INT NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE vendor_address (
     FOREIGN KEY (vendor_id) REFERENCES vendor_master(vendor_id) ON DELETE CASCADE
 );
 
--- VENDOR CONTACT TABLE
+
 CREATE TABLE vendor_contact (
     contact_id SERIAL PRIMARY KEY,
     vendor_id INT NOT NULL,
@@ -43,7 +43,7 @@ CREATE TABLE vendor_contact (
     FOREIGN KEY (vendor_id) REFERENCES vendor_master(vendor_id) ON DELETE CASCADE
 );
 
--- VENDOR BANK DETAILS TABLE
+
 CREATE TABLE vendor_bank_details (
     bank_id SERIAL PRIMARY KEY,
     vendor_id INT NOT NULL,
@@ -56,7 +56,7 @@ CREATE TABLE vendor_bank_details (
     FOREIGN KEY (vendor_id) REFERENCES vendor_master(vendor_id) ON DELETE CASCADE
 );
 
--- VENDOR DOCUMENTS TABLE
+
 CREATE TABLE vendor_documents (
     document_id SERIAL PRIMARY KEY,
     vendor_id INT NOT NULL,
@@ -67,7 +67,7 @@ CREATE TABLE vendor_documents (
     FOREIGN KEY (vendor_id) REFERENCES vendor_master(vendor_id) ON DELETE CASCADE
 );
 
--- VENDOR RATING HISTORY TABLE
+
 CREATE TABLE vendor_rating_history (
     rating_id SERIAL PRIMARY KEY,
     vendor_id INT NOT NULL,
@@ -78,13 +78,13 @@ CREATE TABLE vendor_rating_history (
     FOREIGN KEY (vendor_id) REFERENCES vendor_master(vendor_id) ON DELETE CASCADE
 );
 
--- VENDOR CATEGORY MASTER TABLE
+
 CREATE TABLE vendor_category (
     category_id SERIAL PRIMARY KEY,
     category_name VARCHAR(100) NOT NULL UNIQUE
 );
 
--- VENDOR CATEGORY MAPPING TABLE
+
 CREATE TABLE vendor_category_map (
     id SERIAL PRIMARY KEY,
     vendor_id INT NOT NULL,

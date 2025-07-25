@@ -4,7 +4,7 @@ CREATE TABLE invoice_master (
     vendor_id INTEGER NOT NULL,
     invoice_number VARCHAR(100) NOT NULL,
     invoice_date DATE NOT NULL,
-    invoice_amount NUMERIC(12, 2) NOT NULL,  -- Base amount before tax
+    invoice_amount NUMERIC(12, 2) NOT NULL,  
 
     cgst_amount NUMERIC(12, 2) DEFAULT 0.00,
     sgst_amount NUMERIC(12, 2) DEFAULT 0.00,
@@ -14,7 +14,7 @@ CREATE TABLE invoice_master (
 
     total_invoice_amount NUMERIC(12, 2),
 
-    payment_status VARCHAR(50) DEFAULT 'PENDING', -- PENDING / PARTIAL / PAID
+    payment_status VARCHAR(50) DEFAULT 'PENDING', 
     remarks TEXT,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -31,7 +31,7 @@ CREATE TABLE payment_tracking_master (
     vendor_id INTEGER NOT NULL,
     payment_date DATE NOT NULL,
     payment_amount NUMERIC(12, 2) NOT NULL,
-    payment_mode VARCHAR(50),  -- UPI / NEFT / Cheque etc.
+    payment_mode VARCHAR(50),  
     transaction_reference VARCHAR(100),
     payment_notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

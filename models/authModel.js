@@ -31,7 +31,8 @@ export const getUserAccessByRoleId = async (roleId) => {
       fm.function_short_name,
       sf.sub_function_master_id,
       sf.sub_function_short_name,
-      am.access_type
+      am.access_type,
+      sf.sub_sort_order
     FROM role_function_access_map rfm
     JOIN sub_function_master sf ON rfm.sub_function_master_id = sf.sub_function_master_id
     JOIN function_master fm ON sf.function_master_id = fm.function_master_id

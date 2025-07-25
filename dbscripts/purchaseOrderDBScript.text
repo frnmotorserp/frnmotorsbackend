@@ -14,8 +14,8 @@ CREATE TABLE purchase_order (
     cgst_amount NUMERIC(12, 2) DEFAULT 0.0,
     sgst_amount NUMERIC(12, 2) DEFAULT 0.0,
     igst_amount NUMERIC(12, 2) DEFAULT 0.0,
-    tax_type VARCHAR(10), -- 'INTRA' or 'INTER'
-    status VARCHAR(20) DEFAULT 'Draft', -- Draft, Approved, Partially Received, Completed, Cancelled
+    tax_type VARCHAR(10), 
+    status VARCHAR(20) DEFAULT 'Draft',
     remarks TEXT,
     created_by VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -31,7 +31,7 @@ CREATE TABLE purchase_order_item (
     product_description TEXT,
     quantity NUMERIC(10, 2) NOT NULL,
     unit_price NUMERIC(12, 2) NOT NULL,
-    uom VARCHAR(20), -- Unit of Measure (e.g., KG, PCS, LTR)
+    uom VARCHAR(20), 
     cgst_percent NUMERIC(5,2),
     sgst_percent NUMERIC(5,2),
     igst_percent NUMERIC(5,2),
@@ -39,7 +39,7 @@ CREATE TABLE purchase_order_item (
     sgst_amount NUMERIC(12,2) DEFAULT 0.0,
     igst_amount NUMERIC(12,2) DEFAULT 0.0,
     total_amount NUMERIC(12, 2) NOT NULL,
-    FOREIGN KEY (po_id) REFERENCES purchase_order(po_id) ON DELETE CASCADE
+    FOREIGN KEY (po_id) REFERENCES purchase_order(po_id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES product_master(product_id) ON DELETE RESTRICT
-    -- link product_id to your product_master table
+  
 );

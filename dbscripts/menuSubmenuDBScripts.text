@@ -16,7 +16,7 @@ CREATE TABLE sub_function_master (
 
 CREATE TABLE access_master (
   access_type_id SERIAL PRIMARY KEY,
-  access_type VARCHAR(20) NOT NULL -- view, create, update, delete
+  access_type VARCHAR(20) NOT NULL 
 );
 
 

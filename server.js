@@ -10,6 +10,7 @@ import productManagementRoutes from './routes/productManagementRoutes.js'
 import vendorManagementRoutes from './routes/vendorManagementRoutes.js'
 import purchaseOrderManagementRoutes from './routes/purchaseOrderManagementRoutes.js'
 import invoicePaymentManagementRoutes from './routes/invoicePaymentManagementRoutes.js'
+import grnRoutes from './routes/grnRoutes.js'
 
 
 
@@ -40,6 +41,7 @@ app.use('/api/product', productManagementRoutes);
 app.use('/api/vendor', vendorManagementRoutes);
 app.use('/api/po', purchaseOrderManagementRoutes);
 app.use('/api/invoice', invoicePaymentManagementRoutes);
+app.use('/api/grn', grnRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

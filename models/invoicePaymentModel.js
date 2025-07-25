@@ -224,3 +224,30 @@ export const getPaymentsByInvoiceId = async (invoiceId) => {
   return rows;
 };
 
+
+export const getInvoicePaymentSummaryByPoId = async (poId) => {
+  try {
+    const query = `
+      SELECT 
+        im.invoice_id,
+        im.invoice_number,
+        im.invoice_date,
+        im.total_invoice_amount,
+        im.vendor_id,
+        im.payment_status,
+        COALESCE(SUM(ptm.payment_amount), 0) AS total_paid
+      FROM invoice_master im
+      LEFT JOIN payment_tracking_master ptm ON im.invoice_id = ptm.invoice_id
+      WHERE im.po_id = $1
+      GROUP BY im.invoice_id
+      ORDER BY im.invoice_date DESC
+    `;
+
+    const { rows } = await pool.query(query, [poId]);
+    return rows;
+  } catch (error) {
+    console.error("Error fetching payment summary by PO ID:", error);
+    throw error;
+  }
+};
+

@@ -46,7 +46,8 @@ export const loginUser = async (req, res) => {
         function_short_name,
         sub_function_master_id,
         sub_function_short_name,
-        access_type
+        access_type,
+        sub_sort_order
       } = row;
 
       if (!menuMap[function_master_id]) {
@@ -62,6 +63,8 @@ export const loginUser = async (req, res) => {
         subMenuMap[sub_function_master_id] = {
           subFunctionMasterId: sub_function_master_id,
           subFunctionShortName: sub_function_short_name,
+          subFunctionSortOrder: sub_sort_order,
+
           accessDetailList: []
         };
       }

@@ -51,7 +51,7 @@ CREATE TABLE users (
   secondary_mobile VARCHAR(15),
   primary_email VARCHAR(100) NOT NULL,
   alternative_email VARCHAR(100),
-  user_active_flag TEXT(15),
+  user_active_flag VARCHAR(15),
   first_login_flag BOOLEAN DEFAULT TRUE,           -- ✅ Track first-time login
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

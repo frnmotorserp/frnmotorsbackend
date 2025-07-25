@@ -171,7 +171,7 @@ export const updatePOStatus = async (poId, newStatus, updatedBy) => {
 
 export const getPOsByVendor = async ( vendorId) => {
   const query = `
-    SELECT po_id, po_number, total_amount, payment_terms, status FROM purchase_order
+    SELECT po_id, po_number, total_amount, payment_terms, shipping_address, billing_address, tax_type, status FROM purchase_order
     WHERE vendor_id = $1
     ORDER BY po_date DESC;
   `;

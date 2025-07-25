@@ -1,5 +1,5 @@
 import { getInvoicesByFilters, saveOrUpdateInvoice,  syncPaymentsForInvoice,
-  getPaymentsByInvoiceId } from "../models/invoicePaymentModel.js";
+  getPaymentsByInvoiceId, getInvoicePaymentSummaryByPoId } from "../models/invoicePaymentModel.js";
 // Get Invoices by Filters (vendorId, poId, startDate, endDate)
 export const getInvoicesByFiltersController = async (req, res) => {
   try {
@@ -123,6 +123,34 @@ export const getPaymentsByInvoiceIdController = async (req, res) => {
   }
 };
 
+
+// 5. Get All Payments Grouped by Invoice for a Given PO ID
+export const getPaymentsGroupedByInvoiceController = async (req, res) => {
+  try {
+    const { poId } = req.body;
+
+    if (!poId) {
+      return res.status(400).json({
+        success: false,
+        message: "Purchase Order ID (poId) is required",
+      });
+    }
+
+    const groupedPayments = await getInvoicePaymentSummaryByPoId(poId);
+
+    res.status(200).json({
+      success: true,
+      message: "Payments grouped by invoice fetched successfully",
+      data: groupedPayments,
+    });
+  } catch (error) {
+    console.error("Error in getPaymentsGroupedByInvoiceController:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch grouped payments",
+    });
+  }
+};
 
 
 
