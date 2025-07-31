@@ -128,7 +128,8 @@ export const getPOItemsByPOId = async (poId) => {
       SELECT 
         poi.*,
         pm.product_name,
-        pm.product_code
+        pm.product_code,
+        pm.serial_no_applicable 
       FROM purchase_order_item poi
       LEFT JOIN product_master pm ON poi.product_id = pm.product_id
       WHERE poi.po_id = $1;

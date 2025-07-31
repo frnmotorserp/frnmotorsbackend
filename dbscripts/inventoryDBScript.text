@@ -52,7 +52,9 @@ CREATE TABLE inventory_issue_item (
     issue_item_id SERIAL PRIMARY KEY,
     issue_id INT NOT NULL REFERENCES inventory_issue(issue_id) ON DELETE CASCADE,
     product_id INT NOT NULL REFERENCES product_master(product_id),
-    quantity_issued NUMERIC(12,2) NOT NULL
+    location_id INT NOT NULL REFERENCES location_master(location_id),
+    quantity_issued NUMERIC(12,2) NOT NULL,
+    created_by INT REFERENCES users(user_id)
 );
 
 
@@ -75,7 +77,7 @@ CREATE TABLE inventory_adjustment (
     adjustment_date DATE NOT NULL,
     quantity_change NUMERIC(12,2),  -- Positive or Negative
     reason TEXT,
-    adjusted_by VARCHAR(100),
+    adjusted_by INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -86,4 +88,23 @@ CREATE TABLE inventory_stock (
   quantity NUMERIC(12,2),
   last_update_ref TEXT,
   PRIMARY KEY (product_id, location_id)
+);
+
+
+CREATE TABLE product_serials (
+  serial_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id UUID NOT NULL REFERENCES product_master(product_id),
+  location_id INT NOT NULL REFERENCES location_master(location_id);
+  serial_number TEXT NOT NULL UNIQUE,
+  status TEXT NOT NULL CHECK (status IN (
+    'in_stock',
+    'issued',
+    'out_of_stock',
+    'damaged',
+    'returned',
+    'reserved'
+  )),
+  modified_by INT, 
+  added_date TIMESTAMP DEFAULT NOW(),
+  last_updated TIMESTAMP DEFAULT NOW()
 );

@@ -51,7 +51,7 @@ export const saveOrUpdateGRN = async (grnData, items = []) => {
         poItemId, productId, quantityReceived, unitPrice,
         cgstPercent, sgstPercent, igstPercent,
         cgstAmount, sgstAmount, igstAmount,
-        totalAmount, batchNumber, expiryDate, uom
+        totalAmount, batchNumber, expiryDate, uom, serialNumbersAdd
       } = item;
 
       const insertItemQuery = `
@@ -91,8 +91,23 @@ export const saveOrUpdateGRN = async (grnData, items = []) => {
         quantityReceived,
         `GRN#${savedGrnId}#ADDINV`
       ]);
+
+      if (serialNumbersAdd && serialNumbersAdd?.length > 0) {
+        for (const serial of serialNumbersAdd) {
+          await client.query(`
+          INSERT INTO product_serials (
+            product_id, location_id, serial_number,
+            status, modified_by, last_updated
+          )
+          VALUES ($1, $2, $3, 'in_stock', $4, NOW())
+          ON CONFLICT (serial_number) DO NOTHING;
+        `, [productId, locationId, serial, userId]);
+        }
+      }
     }
-    
+
+
+
     // Change PO Status to VALIDATE GOODS
     const changePOStatusQuery = `
     UPDATE purchase_order
@@ -153,7 +168,7 @@ export const getGRNs = async ({ vendorId, poId, startDate, endDate }) => {
 // Get GRN Items by GRN ID
 export const getGRNItems = async (grnId) => {
   const query = `
-    SELECT gi.*, pm.product_name, pm.product_code
+    SELECT gi.*, pm.product_name, pm.product_code, pm.serial_no_applicable
     FROM grn_item gi
     LEFT JOIN product_master pm ON gi.product_id = pm.product_id
     WHERE gi.grn_id = $1
