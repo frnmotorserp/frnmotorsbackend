@@ -1,5 +1,6 @@
 import { getAllStates, getAllDistricts, saveOrUpdateDistrict, getAllLocationTypes, saveOrUpdateLocationTypeModel, saveOrUpdateLocation, getAllLocations,getAllUserLocationMappings,
 saveOrUpdateUserLocationMapping    } from "../models/locationModel.js";
+import { getAllCompanyDetails } from "../models/companyDetailModel.js";
 
 export const getStateList = async (req, res) => {
   try {
@@ -319,6 +320,46 @@ export const saveOrUpdateUserLocationMappingController = async (req, res) => {
       status: false,
       message: 'Failed to save or update user-location mapping',
       responseObject: []
+    });
+  }
+};
+
+/**
+ * Controller to handle the request for fetching all company details.
+ * It calls the corresponding model function and formats the response.
+ */
+export const getCompanyDetailsList = async (req, res) => {
+  try {
+    // Await the data from the model function
+    const companies = await getAllCompanyDetails();
+
+    // The model already formats the data to camelCase, so no mapping is needed here.
+    // We can directly use the 'companies' array.
+
+    // Send the structured success response
+    res.json({
+      sessionDTO: {
+        status: true,
+        reasonCode: 'success'
+      },
+      status: true,
+      message: 'Successfully fetched company details list.',
+      responseObject: companies
+    });
+
+  } catch (error) {
+    // Log the error for debugging purposes
+    console.error('Error fetching company details list:', error);
+    
+    // Send a structured error response
+    res.status(500).json({
+      sessionDTO: {
+        status: false,
+        reasonCode: 'error'
+      },
+      status: false,
+      message: 'Failed to fetch company details list.',
+      responseObject: [] // Return an empty array on failure
     });
   }
 };

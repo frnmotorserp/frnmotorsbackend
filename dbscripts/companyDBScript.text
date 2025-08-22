@@ -1,0 +1,44 @@
+CREATE TABLE company_details (
+    company_id SERIAL PRIMARY KEY,
+    gstin VARCHAR(15) NOT NULL UNIQUE,
+    business_name VARCHAR(255) NOT NULL,
+    address TEXT NOT NULL,
+    pincode VARCHAR(10) NOT NULL,
+    state_id INT NOT NULL,
+    entity_type VARCHAR(100) NOT NULL,
+    registration_type VARCHAR(50) NOT NULL,
+    department_code_type VARCHAR(255),
+    nature_of_business TEXT,         -- Comma-separated list or normalize into separate table if needed
+    registration_date DATE NOT NULL,
+    status BOOLEAN DEFAULT TRUE,     
+    is_active BOOLEAN DEFAULT TRUE,     -- Active / Inactive flag
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+INSERT INTO company_details 
+(gstin, business_name, address, pincode, entity_type, registration_type, department_code_type, nature_of_business, registration_date,  state_id)
+VALUES 
+(
+  '19BACPM1267L1ZF',
+  'M/S BANDHU MOTORS',
+  'AIJEL DAFADAR, S/O ALIHIM DAFADAR BAZAR PARA DIGNAGAR, West Bengal',
+  '741401',
+  'Proprietorship',
+  'Regular',
+  'KRISHNANAGAR, WB063, WA1103, RANGE-III',
+  'Retail Business, Warehouse / Depot, Wholesale Business',
+  '2019-02-06', 28
+),
+(
+  '19AAECF8786F1Z3',
+  'FRN MOTORS PRIVATE LIMITED',
+  'NA SHYAMNAGAR PARA SENPUR, West Bengal',
+  '741102',
+  'Private Limited Company',
+  'Regular',
+  'KRISHNANAGAR, WB063, WA1105, RANGE-V',
+  'Factory / Manufacturing',
+  '2022-02-28', 28
+);

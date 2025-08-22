@@ -1,0 +1,87 @@
+CREATE TABLE dealer_master (
+    dealer_id SERIAL PRIMARY KEY,
+    dealer_code VARCHAR(20) UNIQUE NOT NULL,
+    dealer_name VARCHAR(100) NOT NULL,
+    dealer_type TEXT,
+    gstin VARCHAR(20),
+    pan VARCHAR(10),
+    email VARCHAR(100),
+    phone VARCHAR(20),
+    website VARCHAR(100),
+    status BOOLEAN DEFAULT TRUE,
+    reporting_to_user_id INT, -- Foreign key to users table
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE dealer_address (
+    address_id SERIAL PRIMARY KEY,
+    dealer_id INT NOT NULL,
+    address_type TEXT,
+    address_line1 TEXT NOT NULL,
+    address_line2 TEXT,
+    city VARCHAR(100),
+    state INT,
+    state_name VARCHAR(100),
+    district VARCHAR(100),
+    pincode VARCHAR(10),
+    country VARCHAR(100) DEFAULT 'India',
+    is_primary BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (dealer_id) REFERENCES dealer_master(dealer_id) ON DELETE CASCADE
+);
+
+CREATE TABLE dealer_contact (
+    contact_id SERIAL PRIMARY KEY,
+    dealer_id INT NOT NULL,
+    contact_name VARCHAR(100) NOT NULL,
+    designation VARCHAR(50),
+    email VARCHAR(100),
+    phone VARCHAR(20),
+    is_primary BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (dealer_id) REFERENCES dealer_master(dealer_id) ON DELETE CASCADE
+);
+
+CREATE TABLE dealer_bank_details (
+    bank_id SERIAL PRIMARY KEY,
+    dealer_id INT NOT NULL,
+    account_holder_name VARCHAR(100),
+    account_number VARCHAR(30),
+    ifsc_code VARCHAR(20),
+    bank_name VARCHAR(100),
+    branch_name VARCHAR(100),
+    is_primary BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (dealer_id) REFERENCES dealer_master(dealer_id) ON DELETE CASCADE
+);
+
+CREATE TABLE dealer_documents (
+    document_id SERIAL PRIMARY KEY,
+    dealer_id INT NOT NULL,
+    document_type VARCHAR(50),
+    document_name VARCHAR(100),
+    document_url TEXT,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (dealer_id) REFERENCES dealer_master(dealer_id) ON DELETE CASCADE
+);
+
+CREATE TABLE dealer_rating_history (
+    rating_id SERIAL PRIMARY KEY,
+    dealer_id INT NOT NULL,
+    rating_score NUMERIC(2,1),
+    rated_by VARCHAR(100),
+    remarks TEXT,
+    rating_date DATE DEFAULT CURRENT_DATE,
+    FOREIGN KEY (dealer_id) REFERENCES dealer_master(dealer_id) ON DELETE CASCADE
+);
+
+CREATE TABLE dealer_category (
+    category_id SERIAL PRIMARY KEY,
+    category_name VARCHAR(100) NOT NULL UNIQUE
+);
+
+CREATE TABLE dealer_category_map (
+    id SERIAL PRIMARY KEY,
+    dealer_id INT NOT NULL,
+    category_id INT NOT NULL,
+    FOREIGN KEY (dealer_id) REFERENCES dealer_master(dealer_id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES dealer_category(category_id) ON DELETE CASCADE
+);

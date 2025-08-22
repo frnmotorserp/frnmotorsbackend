@@ -1,0 +1,18 @@
+CREATE TABLE dealer_visit_log (
+    visit_id SERIAL PRIMARY KEY,
+    salesman_id INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    
+    dealer_id INT REFERENCES dealer_master(dealer_id) ON DELETE SET NULL,
+    is_new_dealer BOOLEAN NOT NULL DEFAULT FALSE,
+
+    new_dealer_details TEXT, -- paragraph if new dealer
+    activities_done TEXT NOT NULL, -- multiline notes
+
+    location_lat DECIMAL(10, 8), -- Latitude
+    location_lng DECIMAL(11, 8), -- Longitude
+    location_address TEXT,       -- Reverse geocoded address if available
+
+    outcome_details  TEXT NOT NULL, -- multiline notes
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

@@ -37,8 +37,9 @@ CREATE TABLE product_master (
     gst_percentage NUMERIC(5,2) DEFAULT 0.00,
     purchase_gst_percentage NUMERIC(5,2) DEFAULT 0.00,
 
-    is_available_for_sale BOOLEAN DEFAULT TRUE,         
+    is_available_for_sale BOOLEAN DEFAULT FALSE,         
     serial_no_applicable BOOLEAN DEFAULT FALSE,          
+    is_final_veichle BOOLEAN DEFAULT FALSE,          
 
     product_type VARCHAR(50) DEFAULT 'FINISHED_GOOD',    
     stock_uom VARCHAR(20),                              

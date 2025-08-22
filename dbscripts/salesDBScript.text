@@ -1,0 +1,127 @@
+CREATE TABLE sales_order_master (
+    
+    sales_order_id SERIAL PRIMARY KEY,
+    sales_order_code VARCHAR(50) UNIQUE NOT NULL,
+    order_date DATE NOT NULL DEFAULT CURRENT_DATE,
+
+    sales_point_location_id INT, 
+
+    order_type VARCHAR(20) DEFAULT 'CUSTOMER', -- CUSTOMER / DEALER
+
+    expected_delivery_date DATE,
+    dispatch_mode VARCHAR(50), -- e.g. Road / Courier / Pickup
+
+
+
+    booked_by_user_id INT REFERENCES users(user_id),
+
+
+
+    customer_id INT REFERENCES customer_master(customer_id),
+    dealer_id INT REFERENCES dealer_master(dealer_id),
+    
+    company_id INT REFERENCES company_details(company_id),
+
+    company_address TEXT,
+    billing_address TEXT,
+    shipping_address TEXT,
+
+    company_state_code VARCHAR(5),
+    billing_state_code VARCHAR(5),
+    shipping_state_code VARCHAR(5),
+
+    transport_mode VARCHAR(10), 
+
+    distance_km NUMERIC(6,2),
+
+
+    payment_terms VARCHAR(100),
+    remarks TEXT,
+
+    subtotal NUMERIC(12,2) DEFAULT 0.00,           -- Before tax
+    discount_amount NUMERIC(12,2) DEFAULT 0.00,    -- Header-level discount if any
+    taxable_amount NUMERIC(12,2) DEFAULT 0.00,
+
+    tax_type VARCHAR(100),
+
+    cgst_amount NUMERIC(12,2) DEFAULT 0.00,
+    sgst_amount NUMERIC(12,2) DEFAULT 0.00,
+    igst_amount NUMERIC(12,2) DEFAULT 0.00,
+    total_tax NUMERIC(12,2) DEFAULT 0.00,
+
+    grand_total NUMERIC(12,2) DEFAULT 0.00,
+
+    status VARCHAR(20) DEFAULT 'CONFIRMED', 
+    payment_status VARCHAR(20) DEFAULT 'UNPAID',           -- UNPAID / PAID PARTIALLY / FULLPAID
+    created_user_id INT REFERENCES users(user_id),
+    created_by VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_user_id INT REFERENCES users(user_id),
+    updated_by VARCHAR(100),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    irn VARCHAR(100),
+
+ack_no VARCHAR(50),
+
+ack_date TIMESTAMP,
+
+signed_qr_code TEXT,
+
+    cancelled_at TIMESTAMP,
+    cancellation_reason TEXT,
+    transporter_name VARCHAR(100),
+    vehicle_no VARCHAR(20)
+);
+
+CREATE TABLE sales_order_item (
+    sales_order_item_id SERIAL PRIMARY KEY,
+    sales_order_id INT REFERENCES sales_order_master(sales_order_id) ON DELETE CASCADE,
+    product_id INT REFERENCES product_master(product_id),
+    hsn_code VARCHAR(20),
+
+    uom VARCHAR(20),
+    batch_no VARCHAR(50),
+    serial_no TEXT,
+
+    quantity NUMERIC(12,2) NOT NULL DEFAULT 0.00,
+    unit_price NUMERIC(12,2) NOT NULL DEFAULT 0.00,
+    discount_percentage NUMERIC(5,2) DEFAULT 0.00,
+    discount NUMERIC(12,2) DEFAULT 0.00,
+    taxable_value NUMERIC(12,2) NOT NULL DEFAULT 0.00,
+
+    cgst_percentage NUMERIC(5,2) DEFAULT 0.00,
+    cgst_amount NUMERIC(12,2) DEFAULT 0.00,
+    sgst_percentage NUMERIC(5,2) DEFAULT 0.00,
+    sgst_amount NUMERIC(12,2) DEFAULT 0.00,
+    igst_percentage NUMERIC(5,2) DEFAULT 0.00,
+    igst_amount NUMERIC(12,2) DEFAULT 0.00,
+
+    line_total NUMERIC(12,2) NOT NULL DEFAULT 0.00
+);
+
+
+CREATE TABLE sales_payment_tracking_master (
+    payment_id SERIAL PRIMARY KEY,
+    sales_order_id INTEGER NOT NULL,  
+    payment_date DATE NOT NULL,
+    payment_amount NUMERIC(12, 2) NOT NULL,
+    payment_mode VARCHAR(50),
+    payment_received_account_no VARCHAR(100), 
+    transaction_reference VARCHAR(100),
+    payment_notes TEXT,
+    
+    created_by INTEGER NOT NULL,
+    updated_by INTEGER,          
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_sales_order_id FOREIGN KEY (sales_order_id) 
+        REFERENCES sales_order_master(sales_order_id) 
+        ON DELETE CASCADE,
+    CONSTRAINT fk_created_by FOREIGN KEY (created_by) 
+        REFERENCES users(user_id),
+    CONSTRAINT fk_updated_by FOREIGN KEY (updated_by) 
+        REFERENCES users(user_id)
+);

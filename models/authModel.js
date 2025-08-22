@@ -70,3 +70,60 @@ export const updateUserPassword = async (userId, hashedPassword) => {
 
   return result.rows[0];
 };
+
+
+
+
+/**
+ * Start a new session (login)
+ * @param {number} userId - The user's ID
+ * @param {string} token - The JWT token
+ */
+export const createSession = async (userId, token) => {
+  const query = `
+    INSERT INTO user_sessions (user_id, token, login_time)
+    VALUES ($1, $2, NOW())
+    RETURNING id, user_id, token, login_time;
+  `;
+  const params = [userId, token];
+  const { rows } = await pool.query(query, params);
+  return rows[0];
+};
+
+/**
+ * End a session (logout)
+ * @param {string} token - The JWT token to identify session
+ */
+export const endSession = async (token) => {
+  const query = `
+    UPDATE user_sessions
+    SET logout_time = NOW(),
+        duration_minutes = EXTRACT(EPOCH FROM (NOW() - login_time)) / 60.0
+    WHERE token = $1
+      AND logout_time IS NULL
+    RETURNING id, user_id, login_time, logout_time, duration_minutes;
+  `;
+  const params = [token];
+  const { rows } = await pool.query(query, params);
+  return rows[0];
+};
+
+/**
+ * Get average time spent per user per day
+ * @param {number} userId
+ */
+export const getDailyAvgTime = async (userId) => {
+  const query = `
+    SELECT 
+      DATE(login_time) AS activity_date,
+      ROUND(AVG(duration_minutes), 2) AS avg_minutes_spent
+    FROM user_sessions
+    WHERE user_id = $1
+      AND duration_minutes IS NOT NULL
+    GROUP BY activity_date
+    ORDER BY activity_date DESC;
+  `;
+  const params = [userId];
+  const { rows } = await pool.query(query, params);
+  return rows;
+};

@@ -20,6 +20,7 @@ export const getAllProducts = async () => {
       pm.purchase_gst_percentage AS "gstPercentagePurchase",
 
       pm.is_available_for_sale AS "isAvailableForSale",
+      pm.is_final_veichle AS "isFinalVeichle",
       pm.serial_no_applicable AS "serialNoApplicable",
       pm.product_type AS "productType",
       pm.stock_uom AS "stockUOM",
@@ -74,9 +75,10 @@ export const saveOrUpdateProduct = async (productDTO) => {
       hsnCode,
       gstPercentage = 0,
       gstPercentagePurchase = 0,
-      isAvailableForSale = true,
+      isAvailableForSale = false,
       serialNoApplicable = false,
-      productType = 'FINISHED_GOOD',
+      isFinalVeichle = false,
+      productType = 'Not Specified',
       stockUOM = null,
       barcodeOrSku = null,
       imageUrl = null,
@@ -108,15 +110,15 @@ export const saveOrUpdateProduct = async (productDTO) => {
       const updateQuery = `
         UPDATE product_master
         SET product_code = $1, product_name = $2, product_category_id = $3, brand = $4, unit = $5, unit_price = $6,
-            description = $7, hsn_code = $8, gst_percentage = $9, is_available_for_sale = $10, serial_no_applicable = $11,
+            description = $7, hsn_code = $8, gst_percentage = $9, is_available_for_sale = $10,  serial_no_applicable = $11,
             product_type = $12, stock_uom = $13, barcode_or_sku = $14, image_url = $15, low_stock_threshold = $16, warranty_period_months = $17,
-            active_flag = $18, updated_user_id = $19, updated_at = $20, purchase_gst_percentage = $21
+            active_flag = $18, updated_user_id = $19, updated_at = $20, purchase_gst_percentage = $21, is_final_veichle = $23
         WHERE product_id = $22;
       `;
       const updateParams = [
         productCode, productName, productCategoryId, brand, unit, unitPrice, description,
         hsnCode, gstPercentage, isAvailableForSale, serialNoApplicable, productType, stockUOM, barcodeOrSku,
-        imageUrl, lowStockThreshold, warrantyPeriodMonths, activeFlag, userId, timestamp, gstPercentagePurchase, productId
+        imageUrl, lowStockThreshold, warrantyPeriodMonths, activeFlag, userId, timestamp, gstPercentagePurchase, productId, isFinalVeichle
       ];
       await client.query(updateQuery, updateParams);
     } else {
@@ -124,14 +126,14 @@ export const saveOrUpdateProduct = async (productDTO) => {
         INSERT INTO product_master
           (product_code, product_name, product_category_id, brand, unit, unit_price, description, hsn_code, gst_percentage,
            is_available_for_sale, serial_no_applicable, product_type, stock_uom, barcode_or_sku, image_url, low_stock_threshold, warranty_period_months,
-           active_flag, created_user_id, created_at, purchase_gst_percentage)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+           active_flag, created_user_id, created_at, purchase_gst_percentage, is_final_veichle)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
         RETURNING product_id;
       `;
       const insertParams = [
         productCode, productName, productCategoryId, brand, unit, unitPrice, description,
         hsnCode, gstPercentage, isAvailableForSale, serialNoApplicable, productType, stockUOM, barcodeOrSku,
-        imageUrl, lowStockThreshold, warrantyPeriodMonths, activeFlag, userId, timestamp, gstPercentagePurchase
+        imageUrl, lowStockThreshold, warrantyPeriodMonths, activeFlag, userId, timestamp, gstPercentagePurchase, isFinalVeichle
       ];
       const insertResult = await client.query(insertQuery, insertParams);
       savedProductId = insertResult.rows[0].product_id;

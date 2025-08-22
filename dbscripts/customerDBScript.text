@@ -1,0 +1,26 @@
+CREATE TABLE customer_master (
+  customer_id SERIAL PRIMARY KEY,
+  customer_code VARCHAR(50) UNIQUE NOT NULL,
+  customer_name VARCHAR(150) NOT NULL,
+  email VARCHAR(100),
+  phone VARCHAR(15),
+  alternate_phone VARCHAR(15),
+
+  -- Tax Details
+  pan VARCHAR(10),               -- Optional but useful
+  gstin VARCHAR(15),             -- Optional; validate if provided
+
+  -- Address Info
+  address_line1 TEXT,
+  address_line2 TEXT,
+  city VARCHAR(100),
+  district VARCHAR(100),
+  state VARCHAR(100),
+  pincode VARCHAR(10),
+  country VARCHAR(100) DEFAULT 'India',
+
+  -- Status & Audit
+  status VARCHAR(20) DEFAULT 'ACTIVE',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

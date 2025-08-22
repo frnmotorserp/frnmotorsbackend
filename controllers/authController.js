@@ -6,7 +6,9 @@ import {
   getUserAccessByRoleId,
   updateUserPassword,
   getUserByUserId,
-  resetUserPasswordByAdmin 
+  resetUserPasswordByAdmin,
+  createSession,
+  endSession
 } from '../models/authModel.js';
 import dotenv from 'dotenv';
 
@@ -84,9 +86,9 @@ export const loginUser = async (req, res) => {
         roleId: user.role_id
       },
       process.env.JWT_SECRET || 'your_secret_key',
-      { expiresIn: '1h' }
+      { expiresIn: '2h' }
     );
-
+    await createSession(user.user_id, token)
     res.status(200).json({
       sessionDTO: { status: true, reasonCode: 'success' },
       status: true,
@@ -208,6 +210,56 @@ export const resetPassword = async (req, res) => {
 
   } catch (error) {
     console.error('Admin reset password error:', error.message);
+    res.status(500).json({
+      sessionDTO: { status: false, reasonCode: 'server_error' },
+      status: false,
+      message: 'Internal server error',
+      responseObject: null
+    });
+  }
+};
+
+
+export const logoutUser = async (req, res) => {
+  try {
+    // Expect JWT in body for POST
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({
+        sessionDTO: { status: false, reasonCode: 'missing_token' },
+        status: false,
+        message: 'Token is required in request body',
+        responseObject: null
+      });
+    }
+
+    // Close the session in DB
+    const session = await endSession(token);
+
+    if (!session) {
+      return res.status(404).json({
+        sessionDTO: { status: false, reasonCode: 'session_not_found' },
+        status: false,
+        message: 'Session not found or already logged out',
+        responseObject: null
+      });
+    }
+
+    res.status(200).json({
+      sessionDTO: { status: true, reasonCode: 'success' },
+      status: true,
+      message: 'Logout successful',
+      responseObject: {
+        userId: session.user_id,
+        loginTime: session.login_time,
+        logoutTime: session.logout_time,
+        durationMinutes: session.duration_minutes
+      }
+    });
+
+  } catch (error) {
+    console.error('Logout error:', error.message);
     res.status(500).json({
       sessionDTO: { status: false, reasonCode: 'server_error' },
       status: false,
