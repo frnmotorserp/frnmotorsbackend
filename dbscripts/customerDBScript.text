@@ -9,6 +9,8 @@ CREATE TABLE customer_master (
   -- Tax Details
   pan VARCHAR(10),               -- Optional but useful
   gstin VARCHAR(15),             -- Optional; validate if provided
+  aadhar TEXT,             -- Optional; validate if provided
+
 
   -- Address Info
   address_line1 TEXT,

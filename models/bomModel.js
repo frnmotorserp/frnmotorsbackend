@@ -1,7 +1,7 @@
 // src/models/bomModel.js
 import pool from '../configs/db.js';
 
-// ✅ Check if BOM already exists for a product
+// Check if BOM already exists for a product
 export const checkIfBOMExists = async (productId) => {
   const result = await pool.query(
     `SELECT bom_id FROM bom_master WHERE product_id = $1 AND active_flag = 'Y'`,
@@ -63,7 +63,7 @@ export const saveOrUpdateBOM = async (bomDTO) => {
       bomId = insertRes.rows[0].bom_id;
     }
 
-    // ✅ Insert BOM Components (recursive-ready structure)
+    // Insert BOM Components (recursive-ready structure)
     for (const component of componentList) {
       const {
         componentProductId,
@@ -102,6 +102,10 @@ export const getBOMByProductId = async (productId) => {
       bm.remarks,
       bm.active_flag AS "activeFlag",
       bm.created_at AS "createdAt",
+
+      pm.purchase_gst_percentage AS "purchaseGstPercentage",
+      pm.gst_percentage AS "gstPercentage",
+      pm.hsn_code AS "hsnCode",
 
       bc.component_id AS "componentId",
       bc.component_product_id AS "componentProductId",

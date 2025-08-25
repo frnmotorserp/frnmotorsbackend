@@ -173,3 +173,32 @@ export const saveOrUpdateProduct = async (productDTO) => {
     client.release();
   }
 };
+
+// Activate / Deactivate product
+export const setProductActiveStatus = async (productId, status, userId) => {
+  const validStatus = status === true ? "Y" : "N";
+  console.log(validStatus)
+  const timestamp = new Date();
+
+  const query = `
+    UPDATE product_master
+    SET active_flag = $1,
+        updated_user_id = $2,
+        updated_at = $3
+    WHERE product_id = $4
+    RETURNING product_id, product_name, active_flag;
+  `;
+
+  const { rows } = await pool.query(query, [validStatus, userId, timestamp, productId]);
+
+  if (rows.length === 0) {
+    throw new Error("Product not found");
+  }
+
+  return {
+    success: true,
+    message: `Product ${validStatus === "Y" ? "activated" : "deactivated"} successfully`,
+    product: rows[0],
+  };
+};
+

@@ -1,5 +1,5 @@
 
-import { getAllProducts, getProductFeatures, saveOrUpdateProduct } from "../models/productModel.js";
+import { getAllProducts, getProductFeatures, saveOrUpdateProduct, setProductActiveStatus } from "../models/productModel.js";
 
 // 1. List All Products
 export const listAllProducts = async (req, res) => {
@@ -89,6 +89,41 @@ export const saveOrUpdateProductController = async (req, res) => {
       sessionDTO: { status: false, reasonCode: 'error' },
       status: false,
       message,
+      responseObject: []
+    });
+  }
+};
+
+
+export const updateProductStatusController = async (req, res) => {
+  try {
+    const { productId, isActive, userId } = req.body;
+    console.log(req.body)
+
+    if (!productId || typeof isActive !== "boolean" || !userId) {
+      return res.status(400).json({
+        sessionDTO: { status: false, reasonCode: 'validation_error' },
+        status: false,
+        message: 'Product ID, isActive (true/false), and User ID are required',
+        responseObject: []
+      });
+    }
+
+    const result = await setProductActiveStatus(productId, isActive, userId);
+
+    res.json({
+      sessionDTO: { status: true, reasonCode: 'success' },
+      status: true,
+      message: `Product ${isActive ? 'activated' : 'deactivated'} successfully.`,
+      responseObject: result
+    });
+
+  } catch (error) {
+    console.error('Error updating product status:', error);
+    res.status(500).json({
+      sessionDTO: { status: false, reasonCode: 'error' },
+      status: false,
+      message: 'Failed to update product status',
       responseObject: []
     });
   }

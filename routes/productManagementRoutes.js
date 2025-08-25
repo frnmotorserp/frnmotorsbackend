@@ -1,7 +1,7 @@
 import express from 'express';
 import { saveOrUpdateProductCategoryController, listAllProductCategories } from '../controllers/productCategoryController.js';
 import { listAllProductFeatures, saveOrUpdateProductFeatureController } from '../controllers/productFeatureController.js';
-import { listAllProducts, saveOrUpdateProductController, getProductFeaturesByProductId } from '../controllers/productController.js';
+import { listAllProducts, saveOrUpdateProductController, getProductFeaturesByProductId, updateProductStatusController } from '../controllers/productController.js';
 import { saveOrUpdateBOMController, getBOMByProductIdController } from '../controllers/bomController.js';
 import { verifyToken } from '../middlewares/verifyToken.js';
 
@@ -20,6 +20,9 @@ router.post('/getProductFeaturesByProductId', verifyToken,  getProductFeaturesBy
 
 router.post('/getBOMDetails', verifyToken,  getBOMByProductIdController);
 router.post('/saveOrUpdateBOM', verifyToken,  saveOrUpdateBOMController);
+
+
+router.post('/updateProductStatus', verifyToken,  updateProductStatusController);
 
 
 

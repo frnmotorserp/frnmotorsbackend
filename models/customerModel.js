@@ -10,6 +10,7 @@ export const getAllCustomers = async () => {
       phone,
       email,
       gstin,
+      aadhar,
       pan,
       status,
       created_at AS "createdAt",
@@ -34,6 +35,7 @@ export const saveOrUpdateCustomer = async (customerDTO) => {
       email,
       gstin,
       pan,
+      aadhar,
       addressline1,
       addressline2,
       city,
@@ -65,16 +67,16 @@ const dupResult = await client.query(duplicateCheck, dupParams);
       await client.query(`
         UPDATE customer_master
         SET customer_code = $1, customer_name = $2, 
-            phone = $3, email = $4, gstin = $5, pan = $6, status = $7, updated_at = $8
+            phone = $3, email = $4, gstin = $5, pan = $6, status = $7, updated_at = $8, aadhar = $10
         WHERE customer_id = $9
-      `, [customerCode, customerName,  phone, email, gstin, pan, status, timestamp, customerId]);
+      `, [customerCode, customerName,  phone, email, gstin, pan, status, timestamp, customerId, aadhar]);
     } else {
       const insertResult = await client.query(`
         INSERT INTO customer_master
-        (customer_code, customer_name,  phone, email, gstin, pan, status, created_at, updated_at)
-        VALUES ($1,$2, $3,$4,$5,$6,$7,$8,$9)
+        (customer_code, customer_name,  phone, email, gstin, pan, status, created_at, updated_at, aadhar)
+        VALUES ($1,$2, $3,$4,$5,$6,$7,$8,$9,$10)
         RETURNING customer_id
-      `, [customerCode, customerName, phone, email, gstin, pan, status, timestamp, timestamp]);
+      `, [customerCode, customerName, phone, email, gstin, pan, status, timestamp, timestamp, aadhar]);
 
       savedCustomerId = insertResult.rows[0].customer_id;
     }

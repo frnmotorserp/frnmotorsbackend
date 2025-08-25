@@ -112,7 +112,7 @@ export const getInventoryAdjustmentsByFilter = async ({ startDate, endDate, prod
     }
 
     const result = await client.query(query, values);
-    console.log(query, values,  result.rows)
+    //console.log(query, values,  result.rows)
     return result.rows;
 
   } catch (err) {
