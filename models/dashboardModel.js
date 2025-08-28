@@ -1,17 +1,18 @@
 import pool from "../configs/db.js";
 
 export const getDailyTotalTime = async (userId) => {
-  const query = `
-    SELECT 
-      DATE(login_time) AS activity_date,
-      ROUND(SUM(duration_minutes), 2) AS total_minutes_spent
-    FROM user_sessions
-    WHERE user_id = $1
-      AND duration_minutes IS NOT NULL
-      AND login_time >= NOW() - INTERVAL '7 days'
-    GROUP BY activity_date
-    ORDER BY activity_date DESC;
-  `;
+    const query = `
+      SELECT 
+        DATE(login_time) AS activity_date,
+        ROUND(SUM(LEAST(duration_minutes, 120)), 2) AS total_minutes_spent
+      FROM user_sessions
+      WHERE user_id = $1
+        AND duration_minutes IS NOT NULL
+        AND login_time >= NOW() - INTERVAL '7 days'
+      GROUP BY activity_date
+      ORDER BY activity_date DESC;
+    `;
+
   const params = [userId];
   const { rows } = await pool.query(query, params);
   return rows;
@@ -118,7 +119,7 @@ export const getDashboardSummary = async () => {
         const totalOrdersTodayQuery = `
             SELECT COUNT(*) AS total_orders
             FROM sales_order_master
-            WHERE order_date = CURRENT_DATE;
+            WHERE status != 'CANCELLED' AND order_date = CURRENT_DATE;
         `;
         const totalOrdersTodayResult = await pool.query(totalOrdersTodayQuery);
 
@@ -126,7 +127,7 @@ export const getDashboardSummary = async () => {
         const totalValueTodayQuery = `
             SELECT COALESCE(SUM(grand_total), 0.00) AS total_value
             FROM sales_order_master
-            WHERE order_date = CURRENT_DATE;
+            WHERE status != 'CANCELLED' AND order_date = CURRENT_DATE;
         `;
         const totalValueTodayResult = await pool.query(totalValueTodayQuery);
 
@@ -134,7 +135,7 @@ export const getDashboardSummary = async () => {
       const totalOrdersYesterdayQuery = `
           SELECT COUNT(*) AS total_orders
           FROM sales_order_master
-          WHERE order_date = CURRENT_DATE - 1;
+          WHERE status != 'CANCELLED' AND order_date = CURRENT_DATE - 1;
       `;
       const totalOrdersYesterdayResult = await pool.query(totalOrdersYesterdayQuery);
 
@@ -142,7 +143,7 @@ export const getDashboardSummary = async () => {
       const totalValueYesterdayQuery = `
           SELECT COALESCE(SUM(grand_total), 0.00) AS total_value
           FROM sales_order_master
-          WHERE order_date = CURRENT_DATE - 1;
+          WHERE status != 'CANCELLED' AND order_date = CURRENT_DATE - 1;
       `;
       const totalValueYesterdayResult = await pool.query(totalValueYesterdayQuery);
 
@@ -151,7 +152,7 @@ export const getDashboardSummary = async () => {
         const totalOrdersMonthQuery = `
             SELECT COUNT(*) AS total_orders
             FROM sales_order_master
-            WHERE order_date >= date_trunc('month', CURRENT_DATE)
+            WHERE status != 'CANCELLED' AND order_date >= date_trunc('month', CURRENT_DATE)
             AND order_date < date_trunc('month', CURRENT_DATE) + INTERVAL '1 month';
         `;
         const totalOrdersMonthResult = await pool.query(totalOrdersMonthQuery);
@@ -160,7 +161,7 @@ export const getDashboardSummary = async () => {
         const totalValueMonthQuery = `
             SELECT COALESCE(SUM(grand_total), 0.00) AS total_value
             FROM sales_order_master
-            WHERE order_date >= date_trunc('month', CURRENT_DATE)
+            WHERE status != 'CANCELLED' AND order_date >= date_trunc('month', CURRENT_DATE)
             AND order_date < date_trunc('month', CURRENT_DATE) + INTERVAL '1 month';
         `;
         const totalValueMonthResult = await pool.query(totalValueMonthQuery);
@@ -169,7 +170,7 @@ export const getDashboardSummary = async () => {
         const totalOrdersPrevMonthQuery = `
             SELECT COUNT(*) AS total_orders
             FROM sales_order_master
-            WHERE order_date >= date_trunc('month', CURRENT_DATE - interval '1 month')
+            WHERE status != 'CANCELLED' AND order_date >= date_trunc('month', CURRENT_DATE - interval '1 month')
               AND order_date < date_trunc('month', CURRENT_DATE);
         `;
         const totalOrdersPrevMonthResult = await pool.query(totalOrdersPrevMonthQuery);
@@ -178,7 +179,7 @@ export const getDashboardSummary = async () => {
         const totalValuePrevMonthQuery = `
             SELECT COALESCE(SUM(grand_total), 0.00) AS total_value
             FROM sales_order_master
-            WHERE order_date >= date_trunc('month', CURRENT_DATE - interval '1 month')
+            WHERE status != 'CANCELLED' AND order_date >= date_trunc('month', CURRENT_DATE - interval '1 month')
               AND order_date < date_trunc('month', CURRENT_DATE);
         `;
         const totalValuePrevMonthResult = await pool.query(totalValuePrevMonthQuery);

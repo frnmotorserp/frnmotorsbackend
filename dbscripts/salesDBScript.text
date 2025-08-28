@@ -98,6 +98,17 @@ CREATE TABLE sales_order_item (
     igst_amount NUMERIC(12,2) DEFAULT 0.00,
 
     line_total NUMERIC(12,2) NOT NULL DEFAULT 0.00
+
+
+    is_final_product BOOLEAN DEFAULT FALSE,
+    product_color VARCHAR(50),
+    chasis_no VARCHAR(100),
+    controller_no VARCHAR(100),
+    motor_no VARCHAR(100),
+    charger VARCHAR(100),
+    ADD COLUMN charger_sl_no VARCHAR(100),
+    ADD COLUMN battery VARCHAR(100),
+    ADD COLUMN battery_sl_no VARCHAR(100);
 );
 
 

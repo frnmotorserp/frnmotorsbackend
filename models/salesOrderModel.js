@@ -75,7 +75,7 @@ export const saveOrUpdateSalesOrder = async (orderData, items) => {
       igstAmount,
       totalTax,
       grandTotal,
-      status,
+      status = "CONFIRMED",
       paymentStatus,
       salesLocationId,
       createdBy,
@@ -87,7 +87,8 @@ export const saveOrUpdateSalesOrder = async (orderData, items) => {
       cancelledAt,
       cancellationReason,
       transporterName,
-      vehicleNo
+      vehicleNo,
+
     } = orderData;
 
     let savedOrderId = salesOrderId;
@@ -171,31 +172,97 @@ export const saveOrUpdateSalesOrder = async (orderData, items) => {
         productId, hsnCode, uom, batchNo, serialNo,
         quantity, unitPrice, discount, taxableValue,
         cgstPercentage, cgstAmount, sgstPercentage, sgstAmount,
-        igstPercentage, igstAmount, lineTotal, discountPercentage
+        igstPercentage, igstAmount, lineTotal, discountPercentage,
+        chasisNo, motorNo, controllerNo, productColor,
+        charger, chargerSlNo, battery, batterySlNo, serialNoApplicable, productSerialIds
       } = item;
 
-      const insertItemQuery = `
-        INSERT INTO sales_order_item (
-          sales_order_id, product_id, hsn_code, uom, batch_no, serial_no,
-          quantity, unit_price, discount, taxable_value,
-          cgst_percentage, cgst_amount, sgst_percentage, sgst_amount,
-          igst_percentage, igst_amount, line_total, discount_percentage
-        )
-        VALUES (
-          $1,$2,$3,$4,$5,$6,
-          $7,$8,$9,$10,
-          $11,$12,$13,$14,
-          $15,$16,$17, $18
-        );
+      const stockCheckQuery = `
+        SELECT quantity 
+        FROM inventory_stock
+        WHERE product_id = $1
+          AND location_id = $2;
       `;
+
+      const stockRes = await client.query(stockCheckQuery, [productId, salesLocationId]);
+
+      if (stockRes.rowCount === 0) {
+        throw new Error(`No stock record found for product ${productId} at location ${salesLocationId}`);
+      }
+
+      const availableQty = parseFloat(stockRes.rows[0].quantity);
+
+      if (availableQty < quantity) {
+        throw new Error(`Only ${availableQty} available for product ${productId}, requested ${quantity}`);
+      }
+
+      if (serialNoApplicable && productSerialIds?.length > 0) {
+        const updateSerialQuery = `
+        UPDATE product_serials
+        SET status = 'out_of_stock',
+            last_updated = NOW(),
+            modified_by = $2
+        WHERE serial_id = ANY($1::uuid[])
+          AND status = 'in_stock';
+      `;
+
+        const res = await client.query(updateSerialQuery, [productSerialIds, createdBy]);
+
+        if (res.rowCount !== productSerialIds.length) {
+          throw new Error("Some serial numbers are not available (already issued or out of stock)");
+        }
+      }
+
+
+
+      const insertItemQuery = `
+      INSERT INTO sales_order_item (
+        sales_order_id, product_id, hsn_code, uom, batch_no, serial_no,
+        quantity, unit_price, discount, taxable_value,
+        cgst_percentage, cgst_amount, sgst_percentage, sgst_amount,
+        igst_percentage, igst_amount, line_total, discount_percentage,
+        chasis_no, motor_no, controller_no, product_color,
+        charger, charger_sl_no, battery, battery_sl_no
+      )
+      VALUES (
+        $1,$2,$3,$4,$5,$6,
+        $7,$8,$9,$10,
+        $11,$12,$13,$14,
+        $15,$16,$17,$18,
+        $19,$20,$21,$22,
+        $23,$24,$25,$26
+      );
+    `;
 
       await client.query(insertItemQuery, [
         savedOrderId, productId, hsnCode, uom, batchNo, serialNo,
         quantity, unitPrice, discount, taxableValue,
         cgstPercentage, cgstAmount, sgstPercentage, sgstAmount,
-        igstPercentage, igstAmount, lineTotal, discountPercentage
+        igstPercentage, igstAmount, lineTotal, discountPercentage,
+        chasisNo, motorNo, controllerNo, productColor,
+        charger, chargerSlNo, battery, batterySlNo
       ]);
+
+
+      const deductStockQuery = `
+    UPDATE inventory_stock
+    SET quantity = quantity - $1,
+        last_update_ref = $4
+    WHERE product_id = $2
+      AND location_id = $3
+      AND quantity >= $1
+    RETURNING *;
+  `;
+
+      const stockResInsert = await client.query(deductStockQuery, [
+        quantity, productId, salesLocationId, `SO-${salesOrderCode}`
+      ]);
+
+      if (stockResInsert.rowCount === 0) {
+        throw new Error(`Insufficient stock for product ${productId} at location ${locationId}`);
+      }
     }
+
 
     await client.query('COMMIT');
     return { success: true, salesOrderId: savedOrderId };
@@ -210,7 +277,8 @@ export const saveOrUpdateSalesOrder = async (orderData, items) => {
 // Get items by Sales Order ID
 export const getSalesOrderItemsById = async (salesOrderId) => {
   const query = `
-    SELECT soi.*, pm.product_name, pm.product_code, pm.serial_no_applicable
+    SELECT soi.*, pm.product_name, pm.product_code, pm.serial_no_applicable, 
+    pm.is_final_veichle
     FROM sales_order_item soi
     LEFT JOIN product_master pm ON soi.product_id = pm.product_id
     WHERE soi.sales_order_id = $1;
@@ -235,7 +303,7 @@ export const updateSalesOrderStatus = async (salesOrderId, newStatus, updatedBy)
 };
 
 // Get all orders by Customer or Dealer
-export const getSalesOrdersByParty = async (partyId, partyType='CUSTOMER') => {
+export const getSalesOrdersByParty = async (partyId, partyType = 'CUSTOMER') => {
   let clause, param;
   if (partyType === 'CUSTOMER') {
     clause = "customer_id = $1";
@@ -249,7 +317,7 @@ export const getSalesOrdersByParty = async (partyId, partyType='CUSTOMER') => {
     SELECT sales_order_id, sales_order_code, grand_total, payment_terms, 
            shipping_address, billing_address, tax_type, status
     FROM sales_order_master
-    WHERE ${clause}
+    WHERE status != 'CANCELLED' AND ${clause}
     ORDER BY order_date DESC;
   `;
   const { rows } = await pool.query(query, [param]);
@@ -267,6 +335,7 @@ export const getAllAvailableItemsforSell = async (locationId) => {
       p.product_code AS "productCode",
       p.unit AS "uom",
       p.serial_no_applicable AS "serialNoApplicable",
+      p.is_final_veichle AS "isFinalVeichle",
       p.unit_price AS "unitPrice",
       i.location_id AS "locationId", 
       l.location_name AS "locationName", 
@@ -289,8 +358,8 @@ export const getAllAvailableItemsforSell = async (locationId) => {
 
 
 
-export const getOrdersWithPayments = async ( customerId, dealerId, startDate, endDate ) => {
-   
+export const getOrdersWithPayments = async (customerId, dealerId, startDate, endDate) => {
+
   // Calculate current FY if dates not provided
   if (!startDate || !endDate) {
     const today = dayjs();
@@ -330,7 +399,7 @@ export const getOrdersWithPayments = async ( customerId, dealerId, startDate, en
     FROM sales_order_master som
     LEFT JOIN sales_payment_tracking_master spt 
       ON som.sales_order_id = spt.sales_order_id
-    WHERE som.order_date BETWEEN $1 AND $2
+    WHERE som.status = $5 AND som.order_date BETWEEN $1 AND $2
       AND (
         ($3::INT IS NOT NULL AND som.customer_id = $3) OR
         ($4::INT IS NOT NULL AND som.dealer_id = $4)
@@ -348,7 +417,8 @@ export const getOrdersWithPayments = async ( customerId, dealerId, startDate, en
     startDate,
     endDate,
     customerId || null,
-    dealerId || null
+    dealerId || null,
+    'CONFIRMED'
   ]);
 
   return {
@@ -378,7 +448,7 @@ export const getMonthlySalesReport = async (year, month) => {
       ON som.dealer_id = d.dealer_id
     LEFT JOIN location_master sp 
       ON som.sales_point_location_id = sp.location_id
-    WHERE EXTRACT(YEAR FROM som.order_date) = $1
+    WHERE som.status != 'CANCELLED' AND EXTRACT(YEAR FROM som.order_date) = $1
       AND EXTRACT(MONTH FROM som.order_date) = $2
     GROUP BY som.order_date, sp.location_name, d.dealer_name,  som.sales_order_code
     ORDER BY som.order_date, sp.location_name, d.dealer_name,  som.sales_order_code;
@@ -395,7 +465,7 @@ export const getMonthlySalesReport = async (year, month) => {
 export const getYearlySalesReport = async (year) => {
   // Financial year in India: April (year) → March (year+1)
   const startDate = `${year}-04-01`;   // e.g. 2025-04-01
-  const endDate   = `${parseInt(year) + 1}-03-31`; // 2026-03-31
+  const endDate = `${parseInt(year) + 1}-03-31`; // 2026-03-31
 
   const query = `
     SELECT 
@@ -409,7 +479,7 @@ export const getYearlySalesReport = async (year) => {
       SUM(som.total_tax)   AS total_tax,
       SUM(som.grand_total) AS total_sales
     FROM sales_order_master som
-    WHERE som.order_date BETWEEN $1 AND $2
+    WHERE som.status != 'CANCELLED' AND som.order_date BETWEEN $1 AND $2
     GROUP BY month_number, month_name
     ORDER BY month_number;
   `;
@@ -418,4 +488,94 @@ export const getYearlySalesReport = async (year) => {
   const { rows } = await pool.query(query, params);
 
   return rows;
+};
+
+
+
+export const cancelSalesOrder = async (salesOrderId, cancelledBy, cancellationReason = "Cancelled by user") => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // 1. Get sales order details
+    const { rows: order } = await client.query(
+      `SELECT sales_order_code, sales_point_location_id 
+       FROM sales_order_master 
+       WHERE sales_order_id = $1`,
+      [salesOrderId]
+    );
+    if (order.length === 0) throw new Error("Sales order not found");
+    const { sales_order_code, sales_point_location_id } = order[0];
+
+    // 2. Get items to restore stock
+    const { rows: items } = await client.query(
+      `SELECT product_id, quantity, serial_no
+       FROM sales_order_item 
+       WHERE sales_order_id = $1`,
+      [salesOrderId]
+    );
+
+
+    for (const item of items) {
+      // 3. Restore stock
+      await client.query(
+        `UPDATE inventory_stock
+         SET quantity = quantity + $1,
+             last_update_ref = $4
+         WHERE product_id = $2 AND location_id = $3`,
+        [item.quantity, item.product_id, sales_point_location_id, `SO-CANCEL-${sales_order_code}`]
+      );
+
+      // 4. Restore serial numbers if applicable
+      if (item.serial_no ) {
+        let serialNumbers = [];
+
+        if (typeof item.serial_no === "string" && item.serial_no.trim() !== "") {
+          serialNumbers = item.serial_no
+            .split(",")               // split by comma
+            .map(s => s.trim())       // remove extra spaces
+            .filter(Boolean) || [];         // remove empty entries
+        }
+
+        if(serialNumbers?.length > 0){
+          await client.query(
+            `UPDATE product_serials
+          SET status = 'in_stock',
+              last_updated = NOW(),
+              modified_by = $2
+          WHERE serial_number = ANY($1::text[])`,
+            [serialNumbers, cancelledBy]
+          );
+        }
+
+        
+      }
+    }
+
+    // 5. Delete order items
+    // await client.query(
+    //   `DELETE FROM sales_order_item WHERE sales_order_id = $1`,
+    //   [salesOrderId]
+    // );
+
+    // 6. Update master status
+    await client.query(
+      `UPDATE sales_order_master
+       SET status = 'CANCELLED',
+           cancellation_reason = $2,
+           cancelled_at = NOW(),
+           updated_by = $3,
+           updated_at = NOW()
+       WHERE sales_order_id = $1`,
+      [salesOrderId, cancellationReason, cancelledBy]
+    );
+
+    await client.query("COMMIT");
+    return { success: true, cancelled: true, salesOrderId };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
 };

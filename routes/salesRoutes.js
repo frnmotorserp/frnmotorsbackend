@@ -13,7 +13,8 @@ import {
   saveOrUpdatePaymentController,
   getSalesOrdersWithPaymentsController,
   getMonthlySalesReportController,
-  getYearlySalesReportController
+  getYearlySalesReportController,
+  cancelSalesOrderController
 } from '../controllers/salesOrderController.js';
 
 const router = express.Router();
@@ -45,5 +46,8 @@ router.post('/getSalesOrdersWithPayments', verifyToken, getSalesOrdersWithPaymen
 router.post('/saveOrUpdateOrderPayment', verifyToken, saveOrUpdatePaymentController);
 router.post('/getPaymentsBySalesOrderId', verifyToken, getPaymentsBySalesOrderIdController);
 router.post('/deletePayment', verifyToken, deletePaymentController);
+
+
+router.post('/cancelSalesOrder', verifyToken, cancelSalesOrderController);
 
 export default router;

@@ -8,7 +8,8 @@ import {
   getAllAvailableItemsforSell,
   getOrdersWithPayments,
   getMonthlySalesReport,
-  getYearlySalesReport 
+  getYearlySalesReport,
+  cancelSalesOrder
 } from "../models/salesOrderModel.js";
 
 import { deletePayment, saveOrUpdatePayment, getPaymentsBySalesOrderId } from "../models/paymentTrackingModel.js";
@@ -454,6 +455,49 @@ export const getYearlySalesReportController = async (req, res) => {
       sessionDTO: { status: false, reasonCode: 'error' },
       status: false,
       message: 'Failed to fetch yearly sales report',
+      responseObject: []
+    });
+  }
+};
+
+// Cancel Sales Order
+export const cancelSalesOrderController = async (req, res) => {
+  try {
+    const { salesOrderId, cancelledBy, cancellationReason } = req.body;
+
+    if (!salesOrderId || !cancelledBy) {
+      return res.status(400).json({
+        sessionDTO: { status: false, reasonCode: "validation_error" },
+        status: false,
+        message: "Sales Order ID and cancelledBy are required.",
+        responseObject: []
+      });
+    }
+
+    const result = await cancelSalesOrder(salesOrderId, cancelledBy, cancellationReason);
+
+    if (!result) {
+      return res.status(404).json({
+        sessionDTO: { status: false, reasonCode: "not_found" },
+        status: false,
+        message: "Sales order not found or already cancelled.",
+        responseObject: []
+      });
+    }
+
+    res.json({
+      sessionDTO: { status: true, reasonCode: "success" },
+      status: true,
+      message: "Sales Order cancelled successfully.",
+      responseObject: result
+    });
+
+  } catch (error) {
+    console.error("Error cancelling Sales Order:", error);
+    res.status(500).json({
+      sessionDTO: { status: false, reasonCode: "error" },
+      status: false,
+      message: "Failed to cancel Sales Order",
       responseObject: []
     });
   }
