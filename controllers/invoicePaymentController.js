@@ -1,5 +1,5 @@
-import { getInvoicesByFilters, saveOrUpdateInvoice,  syncPaymentsForInvoice,
-  getPaymentsByInvoiceId, getInvoicePaymentSummaryByPoId } from "../models/invoicePaymentModel.js";
+import { getInvoicesByFilters, saveOrUpdateInvoice, getInvoiceWithItems,  syncPaymentsForInvoice,
+  getPaymentsByInvoiceId, getInvoicePaymentSummaryByPoId, saveOrUpdateInvoiceWithItems } from "../models/invoicePaymentModel.js";
 // Get Invoices by Filters (vendorId, poId, startDate, endDate)
 export const getInvoicesByFiltersController = async (req, res) => {
   try {
@@ -34,6 +34,47 @@ export const getInvoicesByFiltersController = async (req, res) => {
 };
 
 
+export const getInvoiceWithItemsController = async (req, res) => {
+  try {
+    const { invoiceId } = req.body;
+
+    if (!invoiceId) {
+      return res.status(400).json({
+        sessionDTO: { status: false, reasonCode: "validation_error" },
+        status: false,
+        message: "Invoice ID is required.",
+        responseObject: null,
+      });
+    }
+
+    const invoice = await getInvoiceWithItems(invoiceId);
+
+    if (!invoice) {
+      return res.status(404).json({
+        sessionDTO: { status: false, reasonCode: "not_found" },
+        status: false,
+        message: "Invoice not found.",
+        responseObject: null,
+      });
+    }
+
+    res.json({
+      sessionDTO: { status: true, reasonCode: "success" },
+      status: true,
+      message: "Invoice fetched successfully.",
+      responseObject: invoice,
+    });
+  } catch (error) {
+    console.error("Error fetching invoice with items:", error);
+    res.status(500).json({
+      sessionDTO: { status: false, reasonCode: "error" },
+      status: false,
+      message: "Failed to fetch invoice with items.",
+      responseObject: null,
+    });
+  }
+}
+
 
 export const saveOrUpdateInvoiceController = async (req, res) => {
   try {
@@ -50,7 +91,7 @@ export const saveOrUpdateInvoiceController = async (req, res) => {
       }
     }
 
-    const invoice = await saveOrUpdateInvoice(invoiceData);
+    const invoice = await saveOrUpdateInvoiceWithItems(invoiceData);
     const message = invoiceData.invoiceId
       ? 'Invoice updated successfully'
       : 'Invoice added successfully';

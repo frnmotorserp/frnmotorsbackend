@@ -80,6 +80,190 @@ export const saveOrUpdateInvoice = async (invoiceData) => {
   }
 };
 
+export const saveOrUpdateInvoiceWithItems = async (invoiceData) => {
+  const {
+    invoiceId,       // Optional: If present, update; else insert
+    poId,
+    vendorId,
+    invoiceNumber,
+    invoiceDate,
+    invoiceAmount,
+    cgstAmount = 0,
+    sgstAmount = 0,
+    igstAmount = 0,
+    remarks = '',
+    createdBy,
+    userId, // optional tracking
+    items = [] // invoice items list
+  } = invoiceData;
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const invoiceAmountFloat = parseFloat(invoiceAmount) || 0;
+    const cgst = parseFloat(cgstAmount) || 0;
+    const sgst = parseFloat(sgstAmount) || 0;
+    const igst = parseFloat(igstAmount) || 0;
+    const totalTaxAmount = cgst + sgst + igst;
+    const totalInvoiceAmount = invoiceAmountFloat + totalTaxAmount;
+
+    let savedInvoice;
+    if (invoiceId) {
+      // UPDATE invoice_master
+      const updateQuery = `
+        UPDATE invoice_master SET
+          po_id = $1,
+          vendor_id = $2,
+          invoice_number = $3,
+          invoice_date = $4,
+          invoice_amount = $5,
+          cgst_amount = $6,
+          sgst_amount = $7,
+          igst_amount = $8,
+          total_tax_amount = $9,
+          total_invoice_amount = $10,
+          remarks = $11,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE invoice_id = $12
+        RETURNING *
+      `;
+      const updateValues = [
+        poId, vendorId, invoiceNumber, invoiceDate, invoiceAmountFloat,
+        cgst, sgst, igst,
+        totalTaxAmount, totalInvoiceAmount,
+        remarks, invoiceId
+      ];
+      const { rows } = await client.query(updateQuery, updateValues);
+      savedInvoice = rows[0];
+    } else {
+      // INSERT invoice_master
+      const insertQuery = `
+        INSERT INTO invoice_master (
+          po_id, vendor_id, invoice_number, invoice_date, invoice_amount,
+          cgst_amount, sgst_amount, igst_amount,
+          total_tax_amount, total_invoice_amount,
+          remarks
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+        RETURNING *
+      `;
+      const insertValues = [
+        poId, vendorId, invoiceNumber, invoiceDate, invoiceAmountFloat,
+        cgst, sgst, igst,
+        totalTaxAmount, totalInvoiceAmount,
+        remarks
+      ];
+      const { rows } = await client.query(insertQuery, insertValues);
+      savedInvoice = rows[0];
+    }
+
+    const currentInvoiceId = savedInvoice.invoice_id;
+
+    // 🔹 Step 2: Sync invoice_item table
+    // First fetch existing items
+    const { rows: existingItems } = await client.query(
+      `SELECT invoice_item_id FROM invoice_item WHERE invoice_id = $1`,
+      [currentInvoiceId]
+    );
+
+    const existingIds = existingItems.map((i) => i.invoice_item_id);
+    const incomingIds = items.filter(i => i.invoice_item_id).map(i => i.invoice_item_id);
+
+    // Delete items not present anymore
+    const toDelete = existingIds.filter(id => !incomingIds.includes(id));
+    if (toDelete.length > 0) {
+      await client.query(
+        `DELETE FROM invoice_item WHERE invoice_item_id = ANY($1::int[])`,
+        [toDelete]
+      );
+    }
+
+    // Insert / Update items
+    for (const item of items) {
+      if (item.invoice_item_id) {
+        // UPDATE existing item
+        await client.query(
+          `UPDATE invoice_item SET
+            product_id=$1, hsn_code=$2, uom=$3, quantity=$4,
+            unit_price=$5, discount=$6, taxable_value=$7,
+            cgst_percent=$8, sgst_percent=$9, igst_percent=$10,
+            cgst_amount=$11, sgst_amount=$12, igst_amount=$13,
+            line_total=$14
+          WHERE invoice_item_id=$15`,
+          [
+            item.product_id, item.hsn_code, item.uom, item.quantity,
+            item.unit_price, item.discount, item.taxable_value,
+            item.cgst_percent, item.sgst_percent, item.igst_percent,
+            item.cgst_amount, item.sgst_amount, item.igst_amount,
+            item.line_total, item.invoice_item_id
+          ]
+        );
+      } else {
+        // INSERT new item
+        await client.query(
+          `INSERT INTO invoice_item (
+            invoice_id, product_id, hsn_code, uom, quantity,
+            unit_price, discount, taxable_value,
+            cgst_percent, sgst_percent, igst_percent,
+            cgst_amount, sgst_amount, igst_amount, line_total
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+          [
+            currentInvoiceId, item.product_id, item.hsn_code, item.uom, item.quantity,
+            item.unit_price, item.discount, item.taxable_value,
+            item.cgst_percent, item.sgst_percent, item.igst_percent,
+            item.cgst_amount, item.sgst_amount, item.igst_amount,
+            item.line_total
+          ]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+    return savedInvoice;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error("Error in saveOrUpdateInvoice:", error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const getInvoiceWithItems = async (invoiceId) => {
+  const client = await pool.connect();
+  try {
+    // Fetch invoice
+    const { rows: invoiceRows } = await client.query(
+      `SELECT * FROM invoice_master WHERE invoice_id = $1`,
+      [invoiceId]
+    );
+
+    if (invoiceRows.length === 0) {
+      return null; // not found
+    }
+
+    const invoice = invoiceRows[0];
+
+    // Fetch invoice items
+    const { rows: itemRows } = await client.query(
+      `SELECT ii.*, p.product_name 
+       FROM invoice_item ii
+       LEFT JOIN product_master p ON p.product_id = ii.product_id
+       WHERE ii.invoice_id = $1`,
+      [invoiceId]
+    );
+
+    invoice.items = itemRows;
+    return invoice;
+  } catch (error) {
+    console.error("Error in getInvoiceWithItems:", error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+
 
 /**
  * Get invoice records based on vendorId, purchaseOrderId, and date range
