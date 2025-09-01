@@ -9,8 +9,10 @@ import {
   getOrdersWithPayments,
   getMonthlySalesReport,
   getYearlySalesReport,
-  cancelSalesOrder
+  cancelSalesOrder,
+  getInvoiceData
 } from "../models/salesOrderModel.js";
+import dayjs from "dayjs";
 
 import { deletePayment, saveOrUpdatePayment, getPaymentsBySalesOrderId } from "../models/paymentTrackingModel.js";
 
@@ -502,3 +504,110 @@ export const cancelSalesOrderController = async (req, res) => {
     });
   }
 };
+
+
+export const generateEInvoiceJSON = async(req, res) => {
+    try {
+      const { salesOrderId } = req.body;
+      const data = await getInvoiceData(salesOrderId);
+
+      if (!data) {
+        return res.status(404).json({ error: "Sales order not found" });
+      }
+
+      const { order, items } = data;
+
+      // Skip if buyer GST is missing
+      const buyerGstin = order.customer_gstin || order.dealer_gstin;
+      if (!buyerGstin) {
+        return res.status(400).json({ error: "GSTIN not available for buyer" });
+      }
+
+      const invoice = {
+        Version: "1.1",
+        TranDtls: {
+          TaxSch: "GST",
+          SupTyp: "B2B"
+        },
+        DocDtls: {
+          Typ: "INV",
+          No: order.sales_order_code,
+          Dt: dayjs(order.order_date).format("DD/MM/YYYY")
+        },
+        SellerDtls: {
+          Gstin: order.seller_gstin,
+          LglNm: order.seller_name,
+          Addr1: order.seller_address,
+          Loc: order.city || "NA",
+          Pin: Number(order.seller_pincode) || 0,
+          Stcd: String(order.seller_state_code).padStart(2, "0")
+        },
+        BuyerDtls: {
+          Gstin: buyerGstin,
+          LglNm: order.customer_name || order.dealer_name,
+          Addr1: order.address_line1 || order.company_address,
+          Loc: order.city || "NA",
+          Pin: Number(order.billing_pincode) || 0,
+          Stcd: String(order.billing_state_code || "").padStart(2, "0")
+        },
+        ItemList: items.map((it, idx) => {
+          const qty = Number(it.quantity);
+          const price = Number(it.unit_price);
+          const taxable = Number(it.taxable_value);
+          const item = {
+            SlNo: String(idx + 1),
+            PrdDesc: it.product_name,
+            IsServc: "N",
+            HsnCd: it.hsn_code || "999999",
+            Qty: qty,
+            Unit: it.uom || it.unit || "OTH",
+            UnitPrice: price,
+            TotAmt: qty * price,
+            Discount: Number(it.discount || 0),
+            AssAmt: taxable,
+            GstRt: Number(it.cgst_percentage || 0) + Number(it.sgst_percentage || 0) + Number(it.igst_percentage || 0),
+            IgstAmt: Number(it.igst_amount || 0),
+            SgstAmt: Number(it.sgst_amount || 0),
+            CgstAmt: Number(it.cgst_amount || 0),
+            TotItemVal: Number(it.line_total || taxable)
+          };
+           // If final product (E-Rickshaw), include mandatory details
+          if (it.isErikshow) {
+            item.VehicleDtls = {
+              ChassisNo: it.chasis_no || "NA",
+              MotorNo: it.motor_no || "NA",
+              ControllerNo: it.controller_no || "NA",
+              BatteryName: it.battery || "NA",   
+              BatteryNo: it.battery_sl_no || "NA",
+              ChargerName: it.charger || "NA",    
+              ChargerNo: it.charger_sl_no || "NA",
+              Color: it.product_color || "NA"
+            };
+          }
+          return item
+        }),
+        ValDtls: {
+          AssVal: Number(order.taxable_amount),
+          CgstVal: Number(order.cgst_amount),
+          SgstVal: Number(order.sgst_amount),
+          IgstVal: Number(order.igst_amount),
+          TotInvVal: Number(order.grand_total)
+        }
+      };
+       res.json({
+      sessionDTO: { status: true, reasonCode: 'success' },
+      status: true,
+      message: 'Summary fetched successfully.',
+      responseObject: invoice
+    });
+
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({
+      sessionDTO: { status: false, reasonCode: "error" },
+      status: false,
+      message: "Failed to cancel Sales Order",
+      responseObject: {}
+    });
+    }
+  }

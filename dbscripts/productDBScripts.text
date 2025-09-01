@@ -74,3 +74,53 @@ CREATE TABLE product_feature_value (
   UNIQUE (product_id, feature_id)                 
 );
 
+
+
+
+
+
+
+
+
+
+
+
+{
+  "Millimeter": "MMT",
+  "Centimeter": "CMT",
+  "Meter": "MTR",
+  "Kilometer": "KMT",
+  "Coil": "OTH",
+  "Gram": "GRM",
+  "Kilogram": "KGS",
+  "Tonne": "TNE",
+  "Volt": "OTH",
+  "Ampere": "OTH",
+  "Ampere-hour": "OTH",
+  "Watt": "OTH",
+  "Kilowatt": "OTH",
+  "Kilowatt-hour": "OTH",
+  "Ohm": "OTH",
+  "Kilometers per Hour": "OTH",
+  "Newton-meter": "OTH",
+  "Revolutions per Minute": "OTH",
+  "Pieces": "PCS",
+  "Set": "SET",
+  "Milliliter": "MLT",
+  "Liter": "LTR",
+  "Cubic Centimeter": "CCM",
+  "Pounds per Square Inch": "OTH",
+  "Kilopascal": "OTH",
+  "Bar": "OTH",
+  "Square Millimeter": "SQM",
+  "Square Meter": "SQM",
+  "Second": "OTH",
+  "Minute": "OTH",
+  "Hour": "OTH",
+  "Day": "OTH",
+  "Week": "OTH",
+  "Month": "OTH",
+  "Year": "OTH",
+  "Indian Rupee": "OTH",
+  "No Unit": "OTH"
+}

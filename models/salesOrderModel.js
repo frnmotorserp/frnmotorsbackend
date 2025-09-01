@@ -88,6 +88,8 @@ export const saveOrUpdateSalesOrder = async (orderData, items) => {
       cancellationReason,
       transporterName,
       vehicleNo,
+      billingPincode,
+      shippingPincode
 
     } = orderData;
 
@@ -105,7 +107,8 @@ export const saveOrUpdateSalesOrder = async (orderData, items) => {
             cgst_amount=$24, sgst_amount=$25, igst_amount=$26, total_tax=$27, grand_total=$28,
             status=$29, payment_status=$30, updated_user_id=$31, updated_by=$32, updated_at=$33,
             irn=$34, ack_no=$35, ack_date=$36, signed_qr_code=$37,
-            cancelled_at=$38, cancellation_reason=$39, transporter_name=$40, vehicle_no=$41, sales_point_location_id=$43
+            cancelled_at=$38, cancellation_reason=$39, transporter_name=$40, vehicle_no=$41, sales_point_location_id=$43,
+            billing_pincode=$44, shipping_pincode=$45
         WHERE sales_order_id=$42;
       `;
       await client.query(updateQuery, [
@@ -119,7 +122,7 @@ export const saveOrUpdateSalesOrder = async (orderData, items) => {
         status, paymentStatus, bookedByUserId, updatedBy, timestamp,
         irn, ackNo, ackDate, signedQrCode,
         cancelledAt, cancellationReason, transporterName, vehicleNo,
-        salesOrderId, salesLocationId
+        salesOrderId, salesLocationId, billingPincode, shippingPincode
       ]);
     } else {
       const insertQuery = `
@@ -133,7 +136,8 @@ export const saveOrUpdateSalesOrder = async (orderData, items) => {
           cgst_amount, sgst_amount, igst_amount, total_tax, grand_total,
           status, payment_status, created_user_id, created_by, created_at,
           irn, ack_no, ack_date, signed_qr_code,
-          cancelled_at, cancellation_reason, transporter_name, vehicle_no, sales_point_location_id
+          cancelled_at, cancellation_reason, transporter_name, vehicle_no, sales_point_location_id,
+          billing_pincode, shipping_pincode
         )
         VALUES (
           $1,$2,$3,$4,$5,
@@ -145,7 +149,7 @@ export const saveOrUpdateSalesOrder = async (orderData, items) => {
           $24,$25,$26,$27,$28,
           $29,$30,$31,$32,$33,
           $34,$35,$36,$37,
-          $38,$39,$40,$41,$42
+          $38,$39,$40,$41,$42, $43, $44
         )
         RETURNING sales_order_id;
       `;
@@ -159,7 +163,8 @@ export const saveOrUpdateSalesOrder = async (orderData, items) => {
         cgstAmount, sgstAmount, igstAmount, totalTax, grandTotal,
         status, paymentStatus, bookedByUserId, createdBy, timestamp,
         irn, ackNo, ackDate, signedQrCode,
-        cancelledAt, cancellationReason, transporterName, vehicleNo, salesLocationId
+        cancelledAt, cancellationReason, transporterName, vehicleNo, salesLocationId,
+        billingPincode, shippingPincode
       ]);
       savedOrderId = insertResult.rows[0].sales_order_id;
     }
@@ -579,3 +584,32 @@ export const cancelSalesOrder = async (salesOrderId, cancelledBy, cancellationRe
     client.release();
   }
 };
+
+
+ export const getInvoiceData = async(salesOrderId) => {
+    const orderQuery = `
+      SELECT so.*, 
+             c.customer_name, c.gstin as customer_gstin, c.address_line1, c.city, c.state, 
+             d.dealer_name, d.gstin as dealer_gstin,
+             comp.business_name as seller_name, comp.gstin as seller_gstin, comp.address as seller_address, comp.pincode as seller_pincode, comp.gst_invoice_state_code as seller_state_code
+      FROM sales_order_master so
+      LEFT JOIN customer_master c ON so.customer_id = c.customer_id
+      LEFT JOIN dealer_master d ON so.dealer_id = d.dealer_id
+      LEFT JOIN company_details comp ON so.company_id = comp.company_id
+      WHERE so.sales_order_id = $1
+    `;
+
+    const itemsQuery = `
+      SELECT soi.*, pm.product_name, pm.hsn_code, pm.unit, pm.is_final_veichle as "isErikshow"
+      FROM sales_order_item soi
+      JOIN product_master pm ON soi.product_id = pm.product_id
+      WHERE soi.sales_order_id = $1
+    `;
+
+    const { rows: orders } = await pool.query(orderQuery, [salesOrderId]);
+    const { rows: items } = await pool.query(itemsQuery, [salesOrderId]);
+
+    if (orders.length === 0) return null;
+
+    return { order: orders[0], items };
+  }

@@ -72,6 +72,8 @@ signed_qr_code TEXT,
     cancellation_reason TEXT,
     transporter_name VARCHAR(100),
     vehicle_no VARCHAR(20)
+shipping_pincode TEXT,
+billing_pincode TEXT
 );
 
 CREATE TABLE sales_order_item (

@@ -11,6 +11,7 @@ CREATE TABLE company_details (
     nature_of_business TEXT,         -- Comma-separated list or normalize into separate table if needed
     registration_date DATE NOT NULL,
     status BOOLEAN DEFAULT TRUE,     
+    gst_invoice_state_code INTEGER,
     is_active BOOLEAN DEFAULT TRUE,     -- Active / Inactive flag
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

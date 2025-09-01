@@ -14,7 +14,8 @@ import {
   getSalesOrdersWithPaymentsController,
   getMonthlySalesReportController,
   getYearlySalesReportController,
-  cancelSalesOrderController
+  cancelSalesOrderController,
+  generateEInvoiceJSON
 } from '../controllers/salesOrderController.js';
 
 const router = express.Router();
@@ -49,5 +50,6 @@ router.post('/deletePayment', verifyToken, deletePaymentController);
 
 
 router.post('/cancelSalesOrder', verifyToken, cancelSalesOrderController);
+router.post('/generateEInvoiceJSON', verifyToken, generateEInvoiceJSON);
 
 export default router;

@@ -24,6 +24,26 @@ CREATE TABLE invoice_master (
     CONSTRAINT fk_vendor_id FOREIGN KEY (vendor_id) REFERENCES vendor_master(vendor_id) ON DELETE CASCADE
 );
 
+CREATE TABLE invoice_item (
+    invoice_item_id SERIAL PRIMARY KEY,
+    invoice_id INTEGER NOT NULL REFERENCES invoice_master(invoice_id) ON DELETE CASCADE,
+    product_id INTEGER NOT NULL REFERENCES product_master(product_id),
+    hsn_code VARCHAR(20),
+    uom VARCHAR(20),
+    quantity NUMERIC(12, 2) NOT NULL,
+    unit_price NUMERIC(12, 2) NOT NULL,
+    discount NUMERIC(12, 2) DEFAULT 0.00,
+    taxable_value NUMERIC(12, 2) NOT NULL,
+    cgst_percent NUMERIC(5, 2),
+    sgst_percent NUMERIC(5, 2),
+    igst_percent NUMERIC(5, 2),
+    cgst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    sgst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    igst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    line_total NUMERIC(12, 2) NOT NULL
+);
+
+
 
 CREATE TABLE payment_tracking_master (
     payment_id SERIAL PRIMARY KEY,

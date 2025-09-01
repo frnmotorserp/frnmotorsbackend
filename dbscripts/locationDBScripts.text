@@ -1,6 +1,7 @@
 CREATE TABLE state_master (
     state_id SERIAL PRIMARY KEY,
-    state_name VARCHAR(100) NOT NULL UNIQUE
+    state_name VARCHAR(100) NOT NULL UNIQUE,
+    gst_invoice_state_code INTEGER
 );
 
 
@@ -217,6 +218,40 @@ INSERT INTO district_master (district_name, state_id) VALUES
 ('Varanasi', 26);
 
 
+
+INSERT INTO state_master (state_id, state_name, gst_invoice_state_code)
+VALUES
+  (1, 'Andhra Pradesh', '37'),
+  (2, 'Arunachal Pradesh', '12'),
+  (3, 'Assam', '18'),
+  (4, 'Bihar', '10'),
+  (5, 'Chhattisgarh', '22'),
+  (6, 'Goa', '30'),
+  (7, 'Gujarat', '24'),
+  (8, 'Haryana', '06'),
+  (9, 'Himachal Pradesh', '02'),
+  (10, 'Jharkhand', '20'),
+  (11, 'Karnataka', '29'),
+  (12, 'Kerala', '32'),
+  (13, 'Madhya Pradesh', '23'),
+  (14, 'Maharashtra', '27'),
+  (15, 'Manipur', '14'),
+  (16, 'Meghalaya', '17'),
+  (17, 'Mizoram', '15'),
+  (18, 'Nagaland', '13'),
+  (19, 'Odisha', '21'),
+  (20, 'Punjab', '03'),
+  (21, 'Rajasthan', '08'),
+  (22, 'Sikkim', '11'),
+  (23, 'Tamil Nadu', '33'),
+  (24, 'Telangana', '36'),
+  (25, 'Tripura', '16'),
+  (26, 'Uttar Pradesh', '09'),
+  (27, 'Uttarakhand', '05'),
+  (28, 'West Bengal', '19')
+ON CONFLICT (state_id) DO UPDATE
+SET state_name = EXCLUDED.state_name,
+    gst_invoice_state_code = EXCLUDED.gst_invoice_state_code;
 
 
 
