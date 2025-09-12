@@ -306,6 +306,51 @@ export const getInvoicesByFilters = async (startDate, endDate, vendorId, poId) =
   }
 };
 
+/**
+ * Adds a cashbook entry and updates the cash ledger balance.
+ * Must be called with a client inside an active transaction.
+ *
+ * @param {Object} client - PostgreSQL client
+ * @param {number} amount - Amount to add/subtract
+ * @param {string} description - Description for cash entry
+ * @param {'IN' | 'OUT'} entryType - Entry type
+ */
+export const addCashEntryAndAdjustLedger = async (client, amount, description, entryType) => {
+  // Add entry to cashbook
+  await client.query(
+    `INSERT INTO cashbook (entry_date, description, amount, entry_type)
+     VALUES (CURRENT_DATE, $1, $2, $3)`,
+    [description, amount, entryType]
+  );
+
+  // Update cash ledger balance
+  const res = await client.query(
+    `SELECT id, balance FROM cash_ledger_balance ORDER BY id DESC LIMIT 1`
+  );
+
+  let newBalance = amount;
+  if (res.rows.length > 0) {
+    // For 'OUT' entries, subtract amount
+    newBalance = parseFloat(res.rows[0].balance) + (entryType === 'IN' ? amount : -amount);
+    await client.query(
+      `UPDATE cash_ledger_balance
+       SET balance = $1, last_update = NOW()
+       WHERE id = $2`,
+      [newBalance, res.rows[0].id]
+    );
+  } else {
+    await client.query(
+      `INSERT INTO cash_ledger_balance (last_update, balance)
+       VALUES (NOW(), $1)`,
+      [entryType === 'IN' ? amount : -amount]
+    );
+  }
+
+  return newBalance;
+};
+
+
+
 
 /**
  * Bulk sync payments for an invoice
@@ -313,7 +358,7 @@ export const getInvoicesByFilters = async (startDate, endDate, vendorId, poId) =
  * @param {Number} vendorId
  * @param {Array} paymentList - array of payments (each may have payment_id for update)
  */
-export const syncPaymentsForInvoice = async (invoiceId, vendorId, totalAmountAsPerInvoice, paymentList = []) => {
+export const syncPaymentsForInvoice = async (invoiceId, vendorId, totalAmountAsPerInvoice, paymentList = [], invoiceNumber) => {
   const client = await pool.connect();
 
   try {
@@ -331,10 +376,33 @@ export const syncPaymentsForInvoice = async (invoiceId, vendorId, totalAmountAsP
 
     // Delete removed payments
     if (toDelete.length > 0) {
+     for (const paymentId of toDelete) {
+    // Fetch amount and mode for this payment
+    const res = await client.query(
+      `SELECT payment_amount AS "deletePaymentAmount", payment_mode AS "deletePaymentMode"
+       FROM payment_tracking_master WHERE payment_id = $1`,
+      [paymentId]
+    );
+
+    const { deletePaymentAmount, deletePaymentMode } = res.rows[0] || {};
+    
+    // Add cash entry and adjust ledger if payment was CASH
+    if (deletePaymentAmount && deletePaymentMode === "CASH") {
+      await addCashEntryAndAdjustLedger(
+        client,
+        deletePaymentAmount,
+        `Deleted Payment Adjustment Invoice No. ${invoiceNumber}`,
+        'IN'
+      );
+    }
+  }
+      
       await client.query(
         `DELETE FROM payment_tracking_master WHERE payment_id = ANY($1)`,
         [toDelete]
       );
+      
+
     }
 
     let totalPaid = 0;
@@ -348,6 +416,16 @@ export const syncPaymentsForInvoice = async (invoiceId, vendorId, totalAmountAsP
        const amount = parseFloat(payment_amount || 0);
       totalPaid += amount;
       if (payment_id) {
+
+        // Fetch the existing payment amount and mode
+        const { rows: existingPaymentRows } = await client.query(
+          `SELECT payment_amount, payment_mode FROM payment_tracking_master WHERE payment_id = $1`,
+          [payment_id]
+        );
+
+        const existingPayment = existingPaymentRows[0];
+        const existingAmount = parseFloat(existingPayment.payment_amount || 0);
+        const existingMode = existingPayment.payment_mode;
         // Update
         await client.query(
           `UPDATE payment_tracking_master SET
@@ -357,6 +435,21 @@ export const syncPaymentsForInvoice = async (invoiceId, vendorId, totalAmountAsP
            WHERE payment_id = $6 AND invoice_id = $7 AND vendor_id = $8`,
           [payment_date, payment_amount, payment_mode, transaction_reference, payment_notes, payment_id, invoiceId, vendorId]
         );
+
+        // Adjust cashbook if it was a CASH payment
+  if (payment_mode === 'CASH') {
+    // Compute delta
+    const delta = amount - (existingMode === 'CASH' ? existingAmount : 0);
+
+    if (delta !== 0) {
+      await addCashEntryAndAdjustLedger(
+        client,
+        Math.abs(delta),
+        `Updated Payment Adjustment Invoice No. ${invoiceNumber}`,
+        delta > 0 ? 'OUT' : 'IN'
+      );
+    }
+  }
       } else {
         // Insert
         await client.query(
@@ -366,6 +459,15 @@ export const syncPaymentsForInvoice = async (invoiceId, vendorId, totalAmountAsP
            ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
           [invoiceId, vendorId, payment_date, payment_amount, payment_mode, transaction_reference, payment_notes]
         );
+        // Add cash entry if new payment is CASH
+        if (payment_mode === 'CASH') {
+          await addCashEntryAndAdjustLedger(
+            client,
+            amount,
+            `New Payment Debit for Invoice No. ${invoiceNumber}`,
+            'OUT'
+          );
+        }
       }
     }
       // Determine payment status
@@ -435,3 +537,121 @@ export const getInvoicePaymentSummaryByPoId = async (poId) => {
   }
 };
 
+
+
+
+/**
+ * Add a new cash entry
+ */
+export const addCashEntry = async ({ entry_date, description, amount, entry_type }) => {
+  const res = await pool.query(
+    `INSERT INTO cashbook (entry_date, description, amount, entry_type)
+     VALUES ($1, $2, $3, $4) RETURNING *`,
+    [entry_date, description, amount, entry_type]
+  );
+
+  await updateCashBalance(entry_type, amount);
+  return res.rows[0];
+};
+
+/**
+ * Update an existing cash entry
+ */
+export const updateCashEntry = async (id, { entry_date, description, amount, entry_type }) => {
+  const res = await pool.query(
+    `UPDATE cashbook
+     SET entry_date = $1, description = $2, amount = $3, entry_type = $4
+     WHERE id = $5 RETURNING *`,
+    [entry_date, description, amount, entry_type, id]
+  );
+
+  // Balance adjustment logic (optional: depends on how strict you want consistency)
+  return res.rows[0];
+};
+
+/**
+ * Delete a cash entry
+ */
+export const deleteCashEntry = async (id) => {
+  const res = await pool.query(
+    `DELETE FROM cashbook WHERE id = $1 RETURNING *`,
+    [id]
+  );
+
+  if (res.rows[0]) {
+    const { entry_type, amount } = res.rows[0];
+    const adjustment = entry_type === "IN" ? -amount : amount;
+    await adjustCashBalance(adjustment);
+  }
+
+  return res.rows[0];
+};
+
+/**
+ * Get cash entries within a date range
+ */
+export const getCashEntries = async (startDate, endDate) => {
+  let query = `SELECT * FROM cashbook WHERE 1=1`;
+  const params = [];
+
+  if (startDate) {
+    params.push(startDate);
+    query += ` AND entry_date >= $${params.length}`;
+  }
+
+  if (endDate) {
+    params.push(endDate);
+    query += ` AND entry_date <= $${params.length}`;
+  }
+
+  query += ` ORDER BY entry_date DESC, id DESC`;
+
+  const res = await pool.query(query, params);
+  return res.rows;
+};
+
+/**
+ * Get current balance
+ */
+export const getCashBalance = async () => {
+  const res = await pool.query(
+    `SELECT balance FROM cash_ledger_balance ORDER BY id DESC LIMIT 1`
+  );
+  return res.rows[0] ? res.rows[0].balance : 0;
+};
+
+/**
+ * Internal: update cash balance
+ */
+const updateCashBalance = async (entry_type, amount) => {
+  const adjustment = entry_type === "IN" ? amount : -amount;
+  await adjustCashBalance(adjustment);
+};
+
+/**
+ * Internal: adjust balance
+ */
+const adjustCashBalance = async (adjustment) => {
+  const res = await pool.query(
+    `SELECT id, balance FROM cash_ledger_balance ORDER BY id DESC LIMIT 1`
+  );
+
+  let newBalance = adjustment;
+  if (res.rows.length > 0) {
+    newBalance = parseFloat(res.rows[0].balance) + parseFloat(adjustment);
+    await pool.query(
+      `UPDATE cash_ledger_balance
+       SET balance = $1, last_update = NOW()
+       WHERE id = $2`,
+      [newBalance, res.rows[0].id]
+    );
+  } else {
+    await pool.query(
+      `INSERT INTO cash_ledger_balance (last_update, balance)
+       VALUES (NOW(), $1)`,
+      [newBalance]
+    );
+  }
+
+  return newBalance;
+};
