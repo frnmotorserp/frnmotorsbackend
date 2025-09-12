@@ -1,6 +1,52 @@
 // paymentTrackingModel.js
 import pool from "../configs/db.js";
 
+/**
+ * Adds a cashbook entry and updates the cash ledger balance.
+ * Must be called with a client inside an active transaction.
+ *
+ * @param {Object} client - PostgreSQL client
+ * @param {number} amount - Amount to add/subtract
+ * @param {string} description - Description for cash entry
+ * @param {'IN' | 'OUT'} entryType - Entry type
+ */
+export const addCashEntryAndAdjustLedger = async (client, amt, description, entryType) => {
+  let amount = parseFloat(amt) || 0
+  
+  // Add entry to cashbook
+  await client.query(
+    `INSERT INTO cashbook (entry_date, description, amount, entry_type)
+     VALUES (CURRENT_DATE, $1, $2, $3)`,
+    [description, amount, entryType]
+  );
+
+  // Update cash ledger balance
+  const res = await client.query(
+    `SELECT id, balance FROM cash_ledger_balance ORDER BY id DESC LIMIT 1`
+  );
+
+  let newBalance = amount;
+  if (res.rows.length > 0) {
+    // For 'OUT' entries, subtract amount
+    newBalance = parseFloat(res.rows[0].balance) + (entryType === 'IN' ? amount : -amount);
+    await client.query(
+      `UPDATE cash_ledger_balance
+       SET balance = $1, last_update = NOW()
+       WHERE id = $2`,
+      [newBalance, res.rows[0].id]
+    );
+  } else {
+    await client.query(
+      `INSERT INTO cash_ledger_balance (last_update, balance)
+       VALUES (NOW(), $1)`,
+      [entryType === 'IN' ? amount : -amount]
+    );
+  }
+
+  return newBalance;
+};
+
+
 // View payment history for a sales order
 export const getPaymentsBySalesOrderId = async (salesOrderId) => {
   const query = `
@@ -40,6 +86,34 @@ export const saveOrUpdatePayment = async (paymentData) => {
   } = paymentData;
 
   if (paymentId) {
+
+
+    // 1. Get the old payment amount before update
+  const oldPaymentQuery = `
+    SELECT payment_amount, sales_order_id, payment_mode
+    FROM sales_payment_tracking_master
+    WHERE payment_id = $1
+  `;
+  const { rows: oldRows } = await pool.query(oldPaymentQuery, [paymentId]);
+  if (oldRows.length === 0) {
+    throw new Error("Payment record not found");
+  }
+  const oldAmount = parseFloat(oldRows[0].payment_amount);
+  const oldSalesOrderId = oldRows[0].sales_order_id;
+  const oldPaymentMode = oldRows[0].payment_mode;
+
+  // 2. If old payment was CASH, reverse its effect in cashbook/ledger
+  if (oldPaymentMode === "CASH") {
+    await addCashEntryAndAdjustLedger(
+      pool,
+      oldAmount,
+      `Reversal of previous payment as updated (Payment ID ${paymentId} -  SO ${salesOrderId})`,
+      "OUT" // because we are undoing the earlier cash IN
+    );
+  }
+
+
+
     // Update
     const updateQuery = `
       UPDATE sales_payment_tracking_master
@@ -65,6 +139,15 @@ export const saveOrUpdatePayment = async (paymentData) => {
       userId,
       paymentId
     ]);
+
+        if (paymentMode === "CASH") {
+      await addCashEntryAndAdjustLedger(
+        pool,
+        parseFloat(paymentAmount),
+        `Updated payment entry (SO ID ${salesOrderId})`,
+        "IN"
+      );
+    }
     const totalPaidQuery = `
     SELECT COALESCE(SUM(payment_amount),0) AS total_paid
     FROM sales_payment_tracking_master
@@ -128,6 +211,15 @@ export const saveOrUpdatePayment = async (paymentData) => {
       userId
     ]);
 
+  if (paymentMode === "CASH") {
+    await addCashEntryAndAdjustLedger(
+      pool,
+      parseFloat(paymentAmount),
+      `Added Sales Payment (SO#${salesOrderId})`,
+      "IN"
+    );
+  }
+
     const totalPaidQuery = `
     SELECT COALESCE(SUM(payment_amount),0) AS total_paid
     FROM sales_payment_tracking_master
@@ -172,6 +264,15 @@ export const saveOrUpdatePayment = async (paymentData) => {
 export const deletePayment = async (paymentId, salesOrderId) => {
   const deleteQuery = `DELETE FROM sales_payment_tracking_master WHERE payment_id = $1 RETURNING *`;
   const { rows } = await pool.query(deleteQuery, [paymentId]);
+  const deletedPayment = rows[0];
+  if (deletedPayment?.payment_mode === "CASH") {
+    await addCashEntryAndAdjustLedger(
+      pool,
+      parseFloat(deletedPayment.payment_amount),
+      `Deleted Sales Payment (SO#${salesOrderId})`,
+      "OUT"
+    );
+  }
 
    const totalPaidQuery = `
     SELECT COALESCE(SUM(payment_amount),0) AS total_paid

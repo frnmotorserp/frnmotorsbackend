@@ -59,3 +59,18 @@ CREATE TABLE payment_tracking_master (
     CONSTRAINT fk_invoice_id FOREIGN KEY (invoice_id) REFERENCES invoice_master(invoice_id) ON DELETE CASCADE,
     CONSTRAINT fk_vendor_id FOREIGN KEY (vendor_id) REFERENCES vendor_master(vendor_id) ON DELETE CASCADE
 );
+
+CREATE TABLE cashbook (
+    id SERIAL PRIMARY KEY,
+    entry_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    description TEXT,
+    amount NUMERIC(12,2) NOT NULL,
+    entry_type TEXT CHECK (entry_type IN ('IN', 'OUT')) NOT NULL
+);
+
+
+CREATE TABLE cash_ledger_balance (
+    id SERIAL PRIMARY KEY,
+    last_update TEXT,
+    balance NUMERIC(12,2) NOT NULL DEFAULT 0
+);
