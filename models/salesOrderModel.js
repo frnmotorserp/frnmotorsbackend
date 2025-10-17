@@ -419,7 +419,7 @@ export const getOrdersWithPayments = async (customerId, dealerId, startDate, end
   //   dealerId)
 
   const { rows } = await pool.query(query, [
-    startDate,
+    '2021-04-01',
     endDate,
     customerId || null,
     dealerId || null,
