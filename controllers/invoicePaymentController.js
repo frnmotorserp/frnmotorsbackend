@@ -6,7 +6,12 @@ import { getInvoicesByFilters,
   updateCashEntry,
   deleteCashEntry,
   getCashEntries,
-  getCashBalance
+  getCashBalance,
+  addBankTransaction,
+  getBankTransactions,
+  getBankBalance,
+  getAllBanksWithBalance,
+  getVendorInvoicesWithPaymentsFY
 } from "../models/invoicePaymentModel.js";
 // Get Invoices by Filters (vendorId, poId, startDate, endDate)
 export const getInvoicesByFiltersController = async (req, res) => {
@@ -206,13 +211,13 @@ export const getPaymentsGroupedByInvoiceController = async (req, res) => {
  */
 export const createCashEntry = async (req, res) => {
   try {
-    const { entry_date, description, amount, entry_type } = req.body;
+    const { entry_date, description, amount, entry_type, expense_category } = req.body;
 
     if (!entry_date || !amount || !entry_type) {
       return res.status(400).json({ error: "entry_date, amount, and entry_type are required" });
     }
 
-    const entry = await addCashEntry({ entry_date, description, amount, entry_type });
+    const entry = await addCashEntry({ entry_date, description, amount, entry_type, expense_category });
     res.status(201).json(entry);
   } catch (error) {
     console.error("Error creating cash entry:", error);
@@ -264,8 +269,9 @@ export const removeCashEntry = async (req, res) => {
  */
 export const listCashEntries = async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
-    const entries = await getCashEntries(startDate, endDate);
+    const { startDate, endDate, expenseCategoryId } = req.query;
+    console.log(req.query)
+    const entries = await getCashEntries(startDate, endDate, expenseCategoryId);
 
     res.json(entries);
   } catch (error) {
@@ -287,3 +293,155 @@ export const fetchCashBalance = async (req, res) => {
   }
 };
 
+/**
+ * Create a new bank transaction
+ */
+export const createBankTransactionController = async (req, res) => {
+  try {
+    const {
+      bank_id,
+      transaction_date,
+      transaction_type, // 'IN' or 'OUT'
+      expense_category,
+      amount,
+      reference_no,
+      mode_of_transaction,
+      remarks,
+      created_by
+    } = req.body;
+
+    // Basic validation
+    if (!bank_id || !transaction_date || !transaction_type || !amount || !expense_category) {
+      return res.status(400).json({
+        success: false,
+        message: "bank_id, transaction_date, transaction_type, and amount are required"
+      });
+    }
+
+    const transaction = await addBankTransaction({
+      bank_id,
+      transaction_date,
+      transaction_type,
+      expense_category,
+      amount,
+      reference_no,
+      mode_of_transaction,
+      remarks,
+      created_by
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Bank transaction added successfully",
+      data: transaction
+    });
+  } catch (error) {
+    console.error("Error creating bank transaction:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
+
+/**
+ * Get bank transactions with optional date range
+ */
+export const listBankTransactionsController = async (req, res) => {
+  try {
+    const { bank_id, startDate, endDate, expenseCategoryId } = req.body;
+
+    if (!bank_id) {
+      return res.status(400).json({
+        success: false,
+        message: "bank_id is required"
+      });
+    }
+
+    const transactions = await getBankTransactions(bank_id, startDate, endDate, expenseCategoryId);
+    res.status(200).json({
+      success: true,
+      data: transactions
+    });
+  } catch (error) {
+    console.error("Error fetching bank transactions:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
+
+/**
+ * Get current bank balance
+ */
+export const fetchBankBalanceController = async (req, res) => {
+  try {
+    const { bank_id } = req.body;
+
+    if (!bank_id) {
+      return res.status(400).json({
+        success: false,
+        message: "bank_id is required"
+      });
+    }
+
+    const balance = await getBankBalance(bank_id);
+    res.status(200).json({
+      success: true,
+      balance
+    });
+  } catch (error) {
+    console.error("Error fetching bank balance:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
+
+export const getBanks = async (req, res) => {
+  try {
+    const banks = await getAllBanksWithBalance();
+    res.status(200).json({ success: true, data: banks });
+  } catch (err) {
+    console.error("Error fetching banks:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch bank accounts" });
+  }
+};
+
+
+/**
+ * Controller: Get all invoices with payments for a vendor for the current financial year
+ */
+export const getVendorInvoicesWithPaymentsFYController = async (req, res) => {
+  try {
+    const { vendorId } = req.body;
+
+    if (!vendorId) {
+      return res.status(400).json({
+        sessionDTO: { status: false, reasonCode: "validation_error" },
+        status: false,
+        message: "Vendor ID is required.",
+        responseObject: [],
+      });
+    }
+
+    const result = await getVendorInvoicesWithPaymentsFY(vendorId);
+
+    res.json({
+      sessionDTO: { status: true, reasonCode: "success" },
+      status: true,
+      message: "Invoices with payments fetched successfully.",
+      responseObject: result, // { data: [...], summary: {...} }
+    });
+  } catch (error) {
+    console.error("Error fetching vendor invoices with payments:", error);
+    res.status(500).json({
+      sessionDTO: { status: false, reasonCode: "error" },
+      status: false,
+      message: "Failed to fetch vendor invoices with payments.",
+      responseObject: [],
+    });
+  }
+};

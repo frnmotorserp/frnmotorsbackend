@@ -15,10 +15,11 @@ export const addCashEntryAndAdjustLedger = async (client, amt, description, entr
   
   // Add entry to cashbook
   await client.query(
-    `INSERT INTO cashbook (entry_date, description, amount, entry_type)
-     VALUES (CURRENT_DATE, $1, $2, $3)`,
-    [description, amount, entryType]
+    `INSERT INTO cashbook (entry_date, description, amount, entry_type, expense_category_id)
+     VALUES (CURRENT_DATE, $1, $2, $3, $4)`,
+    [description, amount, entryType, 2]
   );
+  //expense_category_id should be 2 - Sales payment Received - if category id is not in the db insert first
 
   // Update cash ledger balance
   const res = await client.query(
