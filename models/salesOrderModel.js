@@ -413,10 +413,10 @@ export const getOrdersWithPayments = async (customerId, dealerId, startDate, end
     ORDER BY som.order_date DESC;
   `;
 
-  // console.log(query, startDate,
-  //   endDate,
-  //   customerId ,
-  //   dealerId)
+  console.log(query, startDate,
+   endDate,
+   customerId ,
+   dealerId)
 
   const { rows } = await pool.query(query, [
     '2021-04-01',
