@@ -957,7 +957,7 @@ export const getVendorInvoicesWithPaymentsFY = async (vendorId) => {
       ORDER BY po.po_number, im.invoice_date DESC
     `;
 
-    const { rows } = await pool.query(query, [vendorId, fyStart, fyEnd]);
+    const { rows } = await pool.query(query, [vendorId, '2021-04-01', fyEnd]);
 
     // Calculate summary totals
     // const summary = rows.reduce(
