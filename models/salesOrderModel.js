@@ -1,8 +1,13 @@
 import pool from "../configs/db.js";
-import dayjs from 'dayjs';
+import dayjs from "dayjs";
 
 // Get Sales Orders by Date Range (and optional customer/dealer)
-export const getSalesOrdersByDateRange = async (startDate, endDate, customerId, dealerId) => {
+export const getSalesOrdersByDateRange = async (
+  startDate,
+  endDate,
+  customerId,
+  dealerId
+) => {
   let filterClause = `order_date BETWEEN $1 AND $2`;
   const params = [startDate, endDate];
 
@@ -30,7 +35,7 @@ export const getSalesOrderSummary = async () => {
     SELECT 
       status,
       COUNT(*) AS count,
-      SUM(grand_total) AS total_amount
+      SUM(grand_total_rounded) AS total_amount
     FROM sales_order_master
     GROUP BY status;
   `;
@@ -42,7 +47,7 @@ export const getSalesOrderSummary = async () => {
 export const saveOrUpdateSalesOrder = async (orderData, items) => {
   const client = await pool.connect();
   try {
-    await client.query('BEGIN');
+    await client.query("BEGIN");
     const timestamp = new Date();
 
     const {
@@ -89,8 +94,7 @@ export const saveOrUpdateSalesOrder = async (orderData, items) => {
       transporterName,
       vehicleNo,
       billingPincode,
-      shippingPincode
-
+      shippingPincode,
     } = orderData;
 
     let savedOrderId = salesOrderId;
@@ -112,17 +116,51 @@ export const saveOrUpdateSalesOrder = async (orderData, items) => {
         WHERE sales_order_id=$42;
       `;
       await client.query(updateQuery, [
-        salesOrderCode, orderDate, orderType, expectedDeliveryDate,
-        dispatchMode, bookedByUserId, customerId, dealerId,
-        companyId, companyAddress, billingAddress, shippingAddress,
-        companyStateCode, billingStateCode, shippingStateCode,
-        transportMode, distanceKm, paymentTerms, remarks,
-        subtotal, discountAmount, taxableAmount, taxType,
-        cgstAmount, sgstAmount, igstAmount, totalTax, grandTotal,
-        status, paymentStatus, bookedByUserId, updatedBy, timestamp,
-        irn, ackNo, ackDate, signedQrCode,
-        cancelledAt, cancellationReason, transporterName, vehicleNo,
-        salesOrderId, salesLocationId, billingPincode, shippingPincode
+        salesOrderCode,
+        orderDate,
+        orderType,
+        expectedDeliveryDate,
+        dispatchMode,
+        bookedByUserId,
+        customerId,
+        dealerId,
+        companyId,
+        companyAddress,
+        billingAddress,
+        shippingAddress,
+        companyStateCode,
+        billingStateCode,
+        shippingStateCode,
+        transportMode,
+        distanceKm,
+        paymentTerms,
+        remarks,
+        subtotal,
+        discountAmount,
+        taxableAmount,
+        taxType,
+        cgstAmount,
+        sgstAmount,
+        igstAmount,
+        totalTax,
+        grandTotal,
+        status,
+        paymentStatus,
+        bookedByUserId,
+        updatedBy,
+        timestamp,
+        irn,
+        ackNo,
+        ackDate,
+        signedQrCode,
+        cancelledAt,
+        cancellationReason,
+        transporterName,
+        vehicleNo,
+        salesOrderId,
+        salesLocationId,
+        billingPincode,
+        shippingPincode,
       ]);
     } else {
       const insertQuery = `
@@ -154,32 +192,89 @@ export const saveOrUpdateSalesOrder = async (orderData, items) => {
         RETURNING sales_order_id;
       `;
       const insertResult = await client.query(insertQuery, [
-        salesOrderCode, orderDate, orderType, expectedDeliveryDate, dispatchMode,
-        bookedByUserId, customerId, dealerId, companyId,
-        companyAddress, billingAddress, shippingAddress,
-        companyStateCode, billingStateCode, shippingStateCode,
-        transportMode, distanceKm, paymentTerms, remarks,
-        subtotal, discountAmount, taxableAmount, taxType,
-        cgstAmount, sgstAmount, igstAmount, totalTax, grandTotal,
-        status, paymentStatus, bookedByUserId, createdBy, timestamp,
-        irn, ackNo, ackDate, signedQrCode,
-        cancelledAt, cancellationReason, transporterName, vehicleNo, salesLocationId,
-        billingPincode, shippingPincode
+        salesOrderCode,
+        orderDate,
+        orderType,
+        expectedDeliveryDate,
+        dispatchMode,
+        bookedByUserId,
+        customerId,
+        dealerId,
+        companyId,
+        companyAddress,
+        billingAddress,
+        shippingAddress,
+        companyStateCode,
+        billingStateCode,
+        shippingStateCode,
+        transportMode,
+        distanceKm,
+        paymentTerms,
+        remarks,
+        subtotal,
+        discountAmount,
+        taxableAmount,
+        taxType,
+        cgstAmount,
+        sgstAmount,
+        igstAmount,
+        totalTax,
+        grandTotal,
+        status,
+        paymentStatus,
+        bookedByUserId,
+        createdBy,
+        timestamp,
+        irn,
+        ackNo,
+        ackDate,
+        signedQrCode,
+        cancelledAt,
+        cancellationReason,
+        transporterName,
+        vehicleNo,
+        salesLocationId,
+        billingPincode,
+        shippingPincode,
       ]);
       savedOrderId = insertResult.rows[0].sales_order_id;
     }
 
     // delete old items then insert again
-    await client.query(`DELETE FROM sales_order_item WHERE sales_order_id = $1`, [savedOrderId]);
+    await client.query(
+      `DELETE FROM sales_order_item WHERE sales_order_id = $1`,
+      [savedOrderId]
+    );
 
     for (const item of items) {
       const {
-        productId, hsnCode, uom, batchNo, serialNo,
-        quantity, unitPrice, discount, taxableValue,
-        cgstPercentage, cgstAmount, sgstPercentage, sgstAmount,
-        igstPercentage, igstAmount, lineTotal, discountPercentage,
-        chasisNo, motorNo, controllerNo, productColor,
-        charger, chargerSlNo, battery, batterySlNo, serialNoApplicable, productSerialIds
+        productId,
+        hsnCode,
+        uom,
+        batchNo,
+        serialNo,
+        quantity,
+        unitPrice,
+        discount,
+        taxableValue,
+        cgstPercentage,
+        cgstAmount,
+        sgstPercentage,
+        sgstAmount,
+        igstPercentage,
+        igstAmount,
+        lineTotal,
+        discountPercentage,
+        chasisNo,
+        motorNo,
+        controllerNo,
+        productColor,
+        charger,
+        chargerSlNo,
+        battery,
+        batterySlNo,
+        serialNoApplicable,
+        productSerialIds,
       } = item;
 
       const stockCheckQuery = `
@@ -189,16 +284,23 @@ export const saveOrUpdateSalesOrder = async (orderData, items) => {
           AND location_id = $2;
       `;
 
-      const stockRes = await client.query(stockCheckQuery, [productId, salesLocationId]);
+      const stockRes = await client.query(stockCheckQuery, [
+        productId,
+        salesLocationId,
+      ]);
 
       if (stockRes.rowCount === 0) {
-        throw new Error(`No stock record found for product ${productId} at location ${salesLocationId}`);
+        throw new Error(
+          `No stock record found for product ${productId} at location ${salesLocationId}`
+        );
       }
 
       const availableQty = parseFloat(stockRes.rows[0].quantity);
 
       if (availableQty < quantity) {
-        throw new Error(`Only ${availableQty} available for product ${productId}, requested ${quantity}`);
+        throw new Error(
+          `Only ${availableQty} available for product ${productId}, requested ${quantity}`
+        );
       }
 
       if (serialNoApplicable && productSerialIds?.length > 0) {
@@ -211,14 +313,17 @@ export const saveOrUpdateSalesOrder = async (orderData, items) => {
           AND status = 'in_stock';
       `;
 
-        const res = await client.query(updateSerialQuery, [productSerialIds, createdBy]);
+        const res = await client.query(updateSerialQuery, [
+          productSerialIds,
+          createdBy,
+        ]);
 
         if (res.rowCount !== productSerialIds.length) {
-          throw new Error("Some serial numbers are not available (already issued or out of stock)");
+          throw new Error(
+            "Some serial numbers are not available (already issued or out of stock)"
+          );
         }
       }
-
-
 
       const insertItemQuery = `
       INSERT INTO sales_order_item (
@@ -240,14 +345,33 @@ export const saveOrUpdateSalesOrder = async (orderData, items) => {
     `;
 
       await client.query(insertItemQuery, [
-        savedOrderId, productId, hsnCode, uom, batchNo, serialNo,
-        quantity, unitPrice, discount, taxableValue,
-        cgstPercentage, cgstAmount, sgstPercentage, sgstAmount,
-        igstPercentage, igstAmount, lineTotal, discountPercentage,
-        chasisNo, motorNo, controllerNo, productColor,
-        charger, chargerSlNo, battery, batterySlNo
+        savedOrderId,
+        productId,
+        hsnCode,
+        uom,
+        batchNo,
+        serialNo,
+        quantity,
+        unitPrice,
+        discount,
+        taxableValue,
+        cgstPercentage,
+        cgstAmount,
+        sgstPercentage,
+        sgstAmount,
+        igstPercentage,
+        igstAmount,
+        lineTotal,
+        discountPercentage,
+        chasisNo,
+        motorNo,
+        controllerNo,
+        productColor,
+        charger,
+        chargerSlNo,
+        battery,
+        batterySlNo,
       ]);
-
 
       const deductStockQuery = `
     UPDATE inventory_stock
@@ -260,19 +384,23 @@ export const saveOrUpdateSalesOrder = async (orderData, items) => {
   `;
 
       const stockResInsert = await client.query(deductStockQuery, [
-        quantity, productId, salesLocationId, `SO-${salesOrderCode}`
+        quantity,
+        productId,
+        salesLocationId,
+        `SO-${salesOrderCode}`,
       ]);
 
       if (stockResInsert.rowCount === 0) {
-        throw new Error(`Insufficient stock for product ${productId} at location ${locationId}`);
+        throw new Error(
+          `Insufficient stock for product ${productId} at location ${locationId}`
+        );
       }
     }
 
-
-    await client.query('COMMIT');
+    await client.query("COMMIT");
     return { success: true, salesOrderId: savedOrderId };
   } catch (error) {
-    await client.query('ROLLBACK');
+    await client.query("ROLLBACK");
     throw error;
   } finally {
     client.release();
@@ -293,7 +421,11 @@ export const getSalesOrderItemsById = async (salesOrderId) => {
 };
 
 // Update Sales Order Status
-export const updateSalesOrderStatus = async (salesOrderId, newStatus, updatedBy) => {
+export const updateSalesOrderStatus = async (
+  salesOrderId,
+  newStatus,
+  updatedBy
+) => {
   const query = `
     UPDATE sales_order_master
     SET status = $1,
@@ -302,15 +434,23 @@ export const updateSalesOrderStatus = async (salesOrderId, newStatus, updatedBy)
     WHERE sales_order_id = $3
     RETURNING *;
   `;
-  const { rows } = await pool.query(query, [newStatus, updatedBy, salesOrderId]);
-  if (rows.length === 0) throw new Error(`No Sales Order found with ID ${salesOrderId}`);
+  const { rows } = await pool.query(query, [
+    newStatus,
+    updatedBy,
+    salesOrderId,
+  ]);
+  if (rows.length === 0)
+    throw new Error(`No Sales Order found with ID ${salesOrderId}`);
   return { success: true, data: rows[0] };
 };
 
 // Get all orders by Customer or Dealer
-export const getSalesOrdersByParty = async (partyId, partyType = 'CUSTOMER') => {
+export const getSalesOrdersByParty = async (
+  partyId,
+  partyType = "CUSTOMER"
+) => {
   let clause, param;
-  if (partyType === 'CUSTOMER') {
+  if (partyType === "CUSTOMER") {
     clause = "customer_id = $1";
     param = partyId;
   } else {
@@ -319,7 +459,7 @@ export const getSalesOrdersByParty = async (partyId, partyType = 'CUSTOMER') => 
   }
 
   const query = `
-    SELECT sales_order_id, sales_order_code, grand_total, payment_terms, 
+    SELECT sales_order_id, sales_order_code, grand_total_rounded AS grand_total, payment_terms, 
            shipping_address, billing_address, tax_type, status
     FROM sales_order_master
     WHERE status != 'CANCELLED' AND ${clause}
@@ -328,8 +468,6 @@ export const getSalesOrdersByParty = async (partyId, partyType = 'CUSTOMER') => 
   const { rows } = await pool.query(query, [param]);
   return rows;
 };
-
-
 
 // Get All Inventory with a quantity greater than 0 and that is available for sale.
 export const getAllAvailableItemsforSell = async (locationId) => {
@@ -358,24 +496,25 @@ export const getAllAvailableItemsforSell = async (locationId) => {
   return result.rows;
 };
 
-
-
-
-
-
-export const getOrdersWithPayments = async (customerId, dealerId, startDate, endDate) => {
-
+export const getOrdersWithPayments = async (
+  customerId,
+  dealerId,
+  startDate,
+  endDate
+) => {
   // Calculate current FY if dates not provided
   if (!startDate || !endDate) {
     const today = dayjs();
     const currentYear = today.year();
 
-    if (today.month() + 1 >= 4) { // April or later
-      startDate = dayjs(`${currentYear}-04-01`).format('YYYY-MM-DD');
-      endDate = dayjs(`${currentYear + 1}-03-31`).format('YYYY-MM-DD');
-    } else { // Before April → last FY
-      startDate = dayjs(`${currentYear - 1}-04-01`).format('YYYY-MM-DD');
-      endDate = dayjs(`${currentYear}-03-31`).format('YYYY-MM-DD');
+    if (today.month() + 1 >= 4) {
+      // April or later
+      startDate = dayjs(`${currentYear}-04-01`).format("YYYY-MM-DD");
+      endDate = dayjs(`${currentYear + 1}-03-31`).format("YYYY-MM-DD");
+    } else {
+      // Before April → last FY
+      startDate = dayjs(`${currentYear - 1}-04-01`).format("YYYY-MM-DD");
+      endDate = dayjs(`${currentYear}-03-31`).format("YYYY-MM-DD");
     }
   }
 
@@ -386,7 +525,7 @@ export const getOrdersWithPayments = async (customerId, dealerId, startDate, end
       som.sales_order_code,
       som.order_date,
       som.order_type,
-      som.grand_total,
+      som.grand_total_rounded AS grand_total,
       som.payment_status,
       COALESCE(SUM(spt.payment_amount), 0) AS total_paid,
       json_agg(
@@ -409,32 +548,29 @@ export const getOrdersWithPayments = async (customerId, dealerId, startDate, end
         ($3::INT IS NOT NULL AND som.customer_id = $3) OR
         ($4::INT IS NOT NULL AND som.dealer_id = $4)
       )
-    GROUP BY som.sales_order_id, som.sales_order_code, som.order_date, som.order_type, som.grand_total, som.payment_status
+    GROUP BY som.sales_order_id, som.sales_order_code, som.order_date, som.order_type, som.grand_total_rounded, som.payment_status
     ORDER BY som.order_date DESC;
   `;
 
-  console.log(query, startDate,
-   endDate,
-   customerId ,
-   dealerId)
+  // console.log(query, startDate,
+  //   endDate,
+  //   customerId ,
+  //   dealerId)
 
   const { rows } = await pool.query(query, [
-    '2021-04-01',
+    "2020-01-01",
     endDate,
     customerId || null,
     dealerId || null,
-    'CONFIRMED'
+    "CONFIRMED",
   ]);
 
   return {
     startDate,
     endDate,
-    orders: rows
+    orders: rows,
   };
 };
-
-
-
 
 // Get Day-wise Sales Report for a Month (with location + dealer details)
 export const getMonthlySalesReport = async (year, month) => {
@@ -447,7 +583,7 @@ export const getMonthlySalesReport = async (year, month) => {
       COUNT(som.sales_order_id) AS total_orders,
       SUM(som.subtotal) AS total_subtotal,
       SUM(som.total_tax) AS total_tax,
-      SUM(som.grand_total) AS total_sales
+      SUM(som.grand_total_rounded) AS total_sales
     FROM sales_order_master som
     LEFT JOIN dealer_master d 
       ON som.dealer_id = d.dealer_id
@@ -464,12 +600,10 @@ export const getMonthlySalesReport = async (year, month) => {
   return rows;
 };
 
-
-
 // Get Financial Year Sales Report (Month-wise with CGST & SGST)
 export const getYearlySalesReport = async (year) => {
   // Financial year in India: April (year) → March (year+1)
-  const startDate = `${year}-04-01`;   // e.g. 2025-04-01
+  const startDate = `${year}-04-01`; // e.g. 2025-04-01
   const endDate = `${parseInt(year) + 1}-03-31`; // 2026-03-31
 
   const query = `
@@ -482,7 +616,7 @@ export const getYearlySalesReport = async (year) => {
       SUM(som.sgst_amount) AS total_sgst,
       SUM(som.igst_amount) AS total_igst,
       SUM(som.total_tax)   AS total_tax,
-      SUM(som.grand_total) AS total_sales
+      SUM(som.grand_total_rounded) AS total_sales
     FROM sales_order_master som
     WHERE som.status != 'CANCELLED' AND som.order_date BETWEEN $1 AND $2
     GROUP BY month_number, month_name
@@ -495,9 +629,11 @@ export const getYearlySalesReport = async (year) => {
   return rows;
 };
 
-
-
-export const cancelSalesOrder = async (salesOrderId, cancelledBy, cancellationReason = "Cancelled by user") => {
+export const cancelSalesOrder = async (
+  salesOrderId,
+  cancelledBy,
+  cancellationReason = "Cancelled by user"
+) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -520,7 +656,6 @@ export const cancelSalesOrder = async (salesOrderId, cancelledBy, cancellationRe
       [salesOrderId]
     );
 
-
     for (const item of items) {
       // 3. Restore stock
       await client.query(
@@ -528,21 +663,30 @@ export const cancelSalesOrder = async (salesOrderId, cancelledBy, cancellationRe
          SET quantity = quantity + $1,
              last_update_ref = $4
          WHERE product_id = $2 AND location_id = $3`,
-        [item.quantity, item.product_id, sales_point_location_id, `SO-CANCEL-${sales_order_code}`]
+        [
+          item.quantity,
+          item.product_id,
+          sales_point_location_id,
+          `SO-CANCEL-${sales_order_code}`,
+        ]
       );
 
       // 4. Restore serial numbers if applicable
-      if (item.serial_no ) {
+      if (item.serial_no) {
         let serialNumbers = [];
 
-        if (typeof item.serial_no === "string" && item.serial_no.trim() !== "") {
-          serialNumbers = item.serial_no
-            .split(",")               // split by comma
-            .map(s => s.trim())       // remove extra spaces
-            .filter(Boolean) || [];         // remove empty entries
+        if (
+          typeof item.serial_no === "string" &&
+          item.serial_no.trim() !== ""
+        ) {
+          serialNumbers =
+            item.serial_no
+              .split(",") // split by comma
+              .map((s) => s.trim()) // remove extra spaces
+              .filter(Boolean) || []; // remove empty entries
         }
 
-        if(serialNumbers?.length > 0){
+        if (serialNumbers?.length > 0) {
           await client.query(
             `UPDATE product_serials
           SET status = 'in_stock',
@@ -552,8 +696,6 @@ export const cancelSalesOrder = async (salesOrderId, cancelledBy, cancellationRe
             [serialNumbers, cancelledBy]
           );
         }
-
-        
       }
     }
 
@@ -585,9 +727,8 @@ export const cancelSalesOrder = async (salesOrderId, cancelledBy, cancellationRe
   }
 };
 
-
- export const getInvoiceData = async(salesOrderId) => {
-    const orderQuery = `
+export const getInvoiceData = async (salesOrderId) => {
+  const orderQuery = `
       SELECT so.*, 
              c.customer_name, c.gstin as customer_gstin, c.address_line1, c.city, c.state, 
              d.dealer_name, d.gstin as dealer_gstin,
@@ -599,17 +740,17 @@ export const cancelSalesOrder = async (salesOrderId, cancelledBy, cancellationRe
       WHERE so.sales_order_id = $1
     `;
 
-    const itemsQuery = `
+  const itemsQuery = `
       SELECT soi.*, pm.product_name, pm.hsn_code, pm.unit, pm.is_final_veichle as "isErikshow"
       FROM sales_order_item soi
       JOIN product_master pm ON soi.product_id = pm.product_id
       WHERE soi.sales_order_id = $1
     `;
 
-    const { rows: orders } = await pool.query(orderQuery, [salesOrderId]);
-    const { rows: items } = await pool.query(itemsQuery, [salesOrderId]);
+  const { rows: orders } = await pool.query(orderQuery, [salesOrderId]);
+  const { rows: items } = await pool.query(itemsQuery, [salesOrderId]);
 
-    if (orders.length === 0) return null;
+  if (orders.length === 0) return null;
 
-    return { order: orders[0], items };
-  }
+  return { order: orders[0], items };
+};

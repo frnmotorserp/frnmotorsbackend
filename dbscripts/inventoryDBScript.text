@@ -17,7 +17,7 @@ CREATE TABLE grn_item (
     product_id INTEGER NOT NULL REFERENCES product_master(product_id) ON DELETE RESTRICT,
 
     quantity_received NUMERIC(12, 2) NOT NULL,
-    unit_price NUMERIC(12, 2) NOT NULL, -- Pre-tax price
+    unit_price NUMERIC(12, 2) NOT NULL, 
 
     cgst_percent NUMERIC(5, 2),
     sgst_percent NUMERIC(5, 2),
@@ -27,11 +27,11 @@ CREATE TABLE grn_item (
     sgst_amount NUMERIC(12, 2) DEFAULT 0.00,
     igst_amount NUMERIC(12, 2) DEFAULT 0.00,
 
-    total_amount NUMERIC(12, 2) NOT NULL, -- quantity_received * unit_price + total tax
+    total_amount NUMERIC(12, 2) NOT NULL,
 
-    batch_number VARCHAR(100), -- Optional: for tracking
-    uom TEXT, -- Optional: for tracking
-    expiry_date DATE,          -- Optional: for perishable products
+    batch_number VARCHAR(100), 
+    uom TEXT, 
+    expiry_date DATE,         
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -43,7 +43,7 @@ CREATE TABLE inventory_issue (
     issue_number VARCHAR(100) UNIQUE NOT NULL,
     issue_date DATE NOT NULL,
     location_id INT NOT NULL REFERENCES location_master(location_id),
-    issued_to VARCHAR(150),  -- Could be employee/department/customer
+    issued_to VARCHAR(150), 
     remarks TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -93,8 +93,8 @@ CREATE TABLE inventory_stock (
 
 CREATE TABLE product_serials (
   serial_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  product_id UUID NOT NULL REFERENCES product_master(product_id),
-  location_id INT NOT NULL REFERENCES location_master(location_id);
+  product_id INT NOT NULL REFERENCES product_master(product_id),
+  location_id INT NOT NULL REFERENCES location_master(location_id),
   serial_number TEXT NOT NULL UNIQUE,
   status TEXT NOT NULL CHECK (status IN (
     'in_stock',

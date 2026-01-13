@@ -384,7 +384,6 @@ export const addCashEntryAndAdjustLedger = async (
   );
   //expense_category_id should be 1 - Vendor Payemnts - if category id is not in the db insert first
 
-
   // Update cash ledger balance
   const res = await client.query(
     `SELECT id, balance FROM cash_ledger_balance ORDER BY id DESC LIMIT 1`
@@ -601,7 +600,7 @@ export const getInvoicePaymentSummaryByPoId = async (poId) => {
         im.invoice_id,
         im.invoice_number,
         im.invoice_date,
-        im.total_invoice_amount,
+        im.total_invoice_rounded AS total_invoice_amount,
         im.vendor_id,
         im.payment_status,
         COALESCE(SUM(ptm.payment_amount), 0) AS total_paid
@@ -628,7 +627,7 @@ export const addCashEntry = async ({
   description,
   amount,
   entry_type,
-  expense_category
+  expense_category,
 }) => {
   const res = await pool.query(
     `INSERT INTO cashbook (entry_date, description, amount, entry_type, expense_category_id)
@@ -935,9 +934,9 @@ export const getVendorInvoicesWithPaymentsFY = async (vendorId) => {
         po.po_number,
         im.invoice_number,
         im.invoice_date,
-        im.total_invoice_amount,
+        im.total_invoice_rounded AS total_invoice_amount,
         COALESCE(SUM(pt.payment_amount), 0) AS total_paid,
-        im.total_invoice_amount - COALESCE(SUM(pt.payment_amount), 0) AS total_remaining,
+        im.total_invoice_rounded - COALESCE(SUM(pt.payment_amount), 0) AS total_remaining,
         json_agg(
           json_build_object(
             'payment_id', pt.payment_id,
@@ -953,11 +952,11 @@ export const getVendorInvoicesWithPaymentsFY = async (vendorId) => {
       LEFT JOIN payment_tracking_master pt ON im.invoice_id = pt.invoice_id
       WHERE im.vendor_id = $1
         AND im.invoice_date BETWEEN $2 AND $3
-      GROUP BY po.po_number, im.invoice_number, im.invoice_date, im.total_invoice_amount
+      GROUP BY po.po_number, im.invoice_number, im.invoice_date, im.total_invoice_rounded
       ORDER BY po.po_number, im.invoice_date DESC
     `;
 
-    const { rows } = await pool.query(query, [vendorId, '2021-04-01', fyEnd]);
+    const { rows } = await pool.query(query, [vendorId, fyStart, fyEnd]);
 
     // Calculate summary totals
     // const summary = rows.reduce(
@@ -977,5 +976,305 @@ export const getVendorInvoicesWithPaymentsFY = async (vendorId) => {
       error
     );
     throw error;
+  }
+};
+
+/**
+ * Create Vendor Payment (CASH / BANK)
+ * Fully transactional
+ * Vendor Wise Payment (No Invoice Dependency)
+ * New Requirement - 12-01-2026
+ */
+export const createVendorPayment = async (paymentData) => {
+  const client = await pool.connect();
+
+  try {
+    const {
+      vendorId,
+      paymentDate,
+      paymentAmount,
+      paymentMethod, // CASH | BANK
+      bankId,
+      transactionReference,
+      notes,
+      createdBy,
+      modeOfTransaction, // UPI / NEFT / RTGS etc (for bank)
+    } = paymentData;
+
+    await client.query("BEGIN");
+
+    let cashbookId = null;
+    let bankTransactionId = null;
+
+    /* ===================== CASH PAYMENT ===================== */
+    if (paymentMethod === "CASH") {
+      const cashRes = await client.query(
+        `
+        INSERT INTO cashbook (
+          expense_category_id,
+          entry_date,
+          description,
+          amount,
+          entry_type
+        ) VALUES (1, $1, $2, $3, 'OUT')
+        RETURNING id
+        `,
+        [paymentDate, `Cash payment to Vendor - ${notes || ""}`, paymentAmount]
+      );
+
+      cashbookId = cashRes.rows[0].id;
+
+      // Update cash ledger
+      const ledgerRes = await client.query(
+        `SELECT id, balance FROM cash_ledger_balance ORDER BY id DESC LIMIT 1`
+      );
+
+      if (ledgerRes.rows.length) {
+        await client.query(
+          `
+          UPDATE cash_ledger_balance
+          SET balance = balance - $1, last_update = NOW()
+          WHERE id = $2
+          `,
+          [paymentAmount, ledgerRes.rows[0].id]
+        );
+      } else {
+        await client.query(
+          `
+          INSERT INTO cash_ledger_balance (balance, last_update)
+          VALUES ($1 * -1, NOW())
+          `,
+          [paymentAmount]
+        );
+      }
+    }
+
+    /* ===================== BANK PAYMENT ===================== */
+    if (paymentMethod === "BANK") {
+      const bankRes = await client.query(
+        `
+        INSERT INTO bank_transaction_tracker (
+          expense_category_id,
+          bank_id,
+          transaction_date,
+          transaction_type,
+          reference_no,
+          remarks,
+          amount,
+          mode_of_transaction,
+          created_by
+        )
+        VALUES (1, $1, $2, 'OUT', $3, $4, $5, $6, $7)
+        RETURNING transaction_id
+        `,
+        [
+          bankId,
+          paymentDate,
+          transactionReference,
+          `Payment made to Vendor - ${notes || ""}`,
+          paymentAmount,
+          modeOfTransaction,
+          createdBy,
+        ]
+      );
+
+      bankTransactionId = bankRes.rows[0].transaction_id;
+
+      // Update bank ledger
+      await client.query(
+        `
+        UPDATE bank_ledger_balance
+        SET balance = balance - $1, updated_at = NOW()
+        WHERE bank_id = $2
+        `,
+        [paymentAmount, bankId]
+      );
+    }
+
+    /* ===================== VENDOR PAYMENT MASTER ===================== */
+    const paymentRes = await client.query(
+      `
+      INSERT INTO vendor_payment_master (
+        vendor_id,
+        payment_date,
+        payment_amount,
+        payment_method,
+        cashbook_id,
+        bank_transaction_id,
+        bank_id,
+        transaction_reference,
+        payment_notes,
+        created_by
+      ) VALUES (
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10
+      )
+      RETURNING *
+      `,
+      [
+        vendorId,
+        paymentDate,
+        paymentAmount,
+        paymentMethod,
+        cashbookId,
+        bankTransactionId,
+        bankId || null,
+        transactionReference,
+        notes,
+        createdBy,
+      ]
+    );
+
+    await client.query("COMMIT");
+    return paymentRes.rows[0];
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * Get Vendor Payments (CASH / BANK)
+ * Vendor Wise Payment - New Requirement - 12-01-2026
+ */
+export const getVendorPayments = async ({
+  vendorId,
+  fromDate = "2020-01-01",
+  toDate = new Date().toISOString().slice(0, 10),
+}) => {
+  const client = await pool.connect();
+
+  try {
+    const query = `
+      SELECT
+        vpm.vendor_payment_id,
+        vpm.vendor_id,
+        vpm.payment_date,
+        vpm.payment_amount,
+        vpm.payment_method,
+        vpm.transaction_reference,
+        vpm.payment_notes,
+
+        -- Bank details
+        bm.bank_name,
+        bm.account_number,
+        btt.mode_of_transaction,
+        btt.reference_no AS bank_reference_no,
+
+        -- Cash / Bank ids (for drilldown)
+        vpm.cashbook_id,
+        vpm.bank_transaction_id,
+        vpm.bank_id,
+
+        -- Audit
+        vpm.created_by,
+        vpm.created_at
+
+      FROM vendor_payment_master vpm
+
+      LEFT JOIN bank_transaction_tracker btt
+        ON vpm.bank_transaction_id = btt.transaction_id
+
+      LEFT JOIN bank_master bm
+        ON btt.bank_id = bm.bank_id
+
+      WHERE vpm.is_deleted = FALSE
+        AND vpm.vendor_id = $1
+        AND vpm.payment_date BETWEEN $2 AND $3
+
+      ORDER BY vpm.payment_date DESC, vpm.vendor_payment_id DESC
+    `;
+
+    const values = [vendorId, fromDate, toDate];
+
+    const result = await client.query(query, values);
+    return result.rows;
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * Create Vendor Discount
+ * Vendor Wise Discount (No Invoice / Payment Dependency)
+ * New Requirement - 12-01-2026
+ */
+export const createVendorDiscount = async (discountData) => {
+  const client = await pool.connect();
+
+  try {
+    const { vendorId, discountDate, discountAmount, reason, createdBy } =
+      discountData;
+
+    await client.query("BEGIN");
+
+    /* ===================== INSERT DISCOUNT ===================== */
+    const discountRes = await client.query(
+      `
+      INSERT INTO vendor_discount_master (
+        vendor_id,
+        discount_date,
+        discount_amount,
+        reason,
+        created_by
+      ) VALUES (
+        $1, $2, $3, $4, $5
+      )
+      RETURNING *
+      `,
+      [vendorId, discountDate, discountAmount, reason, createdBy]
+    );
+
+    await client.query("COMMIT");
+    return discountRes.rows[0];
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * Get Vendor Discounts
+ * Vendor Wise Discount Listing
+ * New Requirement - 12-01-2026
+ */
+export const getVendorDiscounts = async ({
+  vendorId,
+  fromDate = "2020-01-01",
+  toDate = new Date().toISOString().slice(0, 10),
+}) => {
+  const client = await pool.connect();
+
+  try {
+    const query = `
+      SELECT
+        vdm.vendor_discount_id,
+        vdm.vendor_id,
+        vdm.discount_date,
+        vdm.discount_amount,
+        vdm.reason,
+
+        -- Audit
+        vdm.created_by,
+        vdm.created_at
+
+      FROM vendor_discount_master vdm
+
+      WHERE vdm.is_deleted = FALSE
+        AND vdm.vendor_id = $1
+        AND vdm.discount_date BETWEEN $2 AND $3
+
+      ORDER BY vdm.discount_date DESC, vdm.vendor_discount_id DESC
+    `;
+
+    const values = [vendorId, fromDate, toDate];
+
+    const result = await client.query(query, values);
+    return result.rows;
+  } finally {
+    client.release();
   }
 };

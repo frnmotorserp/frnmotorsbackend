@@ -1,0 +1,44 @@
+CREATE OR REPLACE FUNCTION compute_invoice_rounding()
+RETURNS TRIGGER AS $$
+BEGIN
+    BEGIN
+        NEW.total_invoice_rounded := ROUND(NEW.total_invoice_amount);
+        NEW.rounding_difference := ROUND(NEW.total_invoice_amount) - NEW.total_invoice_amount;
+    EXCEPTION WHEN OTHERS THEN
+        -- Optional: log error but allow insert/update
+        RAISE NOTICE 'Rounding trigger failed for invoice_number %, error: %', NEW.invoice_number, SQLERRM;
+        NEW.total_invoice_rounded := NEW.total_invoice_amount;
+        NEW.rounding_difference := 0;
+    END;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_invoice_rounding
+BEFORE INSERT OR UPDATE ON invoice_master
+FOR EACH ROW
+EXECUTE FUNCTION compute_invoice_rounding();
+
+
+
+
+CREATE OR REPLACE FUNCTION compute_grand_total_rounding()
+RETURNS TRIGGER AS $$
+BEGIN
+  BEGIN
+    NEW.grand_total_rounded := ROUND(NEW.grand_total);
+    NEW.rounding_difference := ROUND(NEW.grand_total) - NEW.grand_total;
+  EXCEPTION WHEN OTHERS THEN
+    -- Log the error but continue
+    RAISE NOTICE 'Rounding trigger failed for grand_total=%, error: %', NEW.grand_total, SQLERRM;
+    NEW.grand_total_rounded := NEW.grand_total; -- fallback
+    NEW.rounding_difference := 0;
+  END;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_grand_total_rounding
+BEFORE INSERT OR UPDATE ON sales_order_master
+FOR EACH ROW
+EXECUTE FUNCTION compute_grand_total_rounding();

@@ -1,0 +1,113 @@
+/*
+    Creating party payment master for dealer or customer payment payment tracking 
+    Here we will automatically add cashbook or bankbook entry 
+
+*/
+
+CREATE TABLE party_payment_master (
+    party_payment_id SERIAL PRIMARY KEY,
+
+    party_type VARCHAR(20) NOT NULL CHECK (party_type IN ('CUSTOMER', 'DEALER')),
+    customer_id INT REFERENCES customer_master(customer_id),
+    dealer_id INT REFERENCES dealer_master(dealer_id),
+
+    payment_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    payment_amount NUMERIC(12,2) NOT NULL CHECK (payment_amount > 0),
+
+    payment_method VARCHAR(10) NOT NULL CHECK (payment_method IN ('CASH', 'BANK')),
+
+    cashbook_id INT REFERENCES cashbook(id),
+    bank_transaction_id INT REFERENCES bank_transaction_tracker(transaction_id),
+    bank_id INT REFERENCES bank_master(bank_id),
+
+    transaction_reference VARCHAR(100),
+    notes TEXT,
+
+    created_by INT REFERENCES users(user_id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    is_deleted BOOLEAN DEFAULT FALSE,
+
+    -- Party validation
+    CONSTRAINT chk_party_reference CHECK (
+        (party_type = 'CUSTOMER' AND customer_id IS NOT NULL AND dealer_id IS NULL)
+        OR
+        (party_type = 'DEALER' AND dealer_id IS NOT NULL AND customer_id IS NULL)
+    ),
+
+    -- Payment source validation
+    CONSTRAINT chk_payment_source CHECK (
+        (
+            payment_method = 'CASH'
+            AND cashbook_id IS NOT NULL
+            AND bank_transaction_id IS NULL
+            AND bank_id IS NULL
+        )
+        OR
+        (
+            payment_method = 'BANK'
+            AND bank_transaction_id IS NOT NULL
+            AND bank_id IS NOT NULL
+            AND cashbook_id IS NULL
+        )
+    )
+);
+
+CREATE INDEX idx_party_payment_customer
+ON party_payment_master (customer_id)
+WHERE party_type = 'CUSTOMER' AND is_deleted = FALSE;
+
+CREATE INDEX idx_party_payment_dealer
+ON party_payment_master (dealer_id)
+WHERE party_type = 'DEALER' AND is_deleted = FALSE;
+
+
+
+
+
+/*
+    Creating sales party discount master
+    Used to track discount amounts given to customer or dealer
+    Independent of invoice or sales order
+*/
+
+CREATE TABLE sales_party_discount_master (
+    sales_party_discount_id SERIAL PRIMARY KEY,
+
+    party_type VARCHAR(20) NOT NULL
+        CHECK (party_type IN ('CUSTOMER', 'DEALER')),
+
+    customer_id INT REFERENCES customer_master(customer_id),
+    dealer_id INT REFERENCES dealer_master(dealer_id),
+
+    discount_date DATE NOT NULL DEFAULT CURRENT_DATE,
+
+    discount_amount NUMERIC(12,2) NOT NULL CHECK (discount_amount > 0),
+
+    reason TEXT,
+
+    created_by INT REFERENCES users(user_id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    is_deleted BOOLEAN DEFAULT FALSE,
+
+    -- Party validation
+    CONSTRAINT chk_discount_party_reference CHECK (
+        (party_type = 'CUSTOMER' AND customer_id IS NOT NULL AND dealer_id IS NULL)
+        OR
+        (party_type = 'DEALER' AND dealer_id IS NOT NULL AND customer_id IS NULL)
+    )
+);
+
+
+CREATE INDEX idx_sales_discount_customer
+ON sales_party_discount_master (customer_id)
+WHERE party_type = 'CUSTOMER' AND is_deleted = FALSE;
+
+CREATE INDEX idx_sales_discount_dealer
+ON sales_party_discount_master (dealer_id)
+WHERE party_type = 'DEALER' AND is_deleted = FALSE;
+
+CREATE INDEX idx_sales_discount_date
+ON sales_party_discount_master (discount_date)
+WHERE is_deleted = FALSE;

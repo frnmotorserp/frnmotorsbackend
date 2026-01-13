@@ -9,7 +9,7 @@ CREATE TABLE dealer_master (
     phone VARCHAR(20),
     website VARCHAR(100),
     status BOOLEAN DEFAULT TRUE,
-    reporting_to_user_id INT, -- Foreign key to users table
+    reporting_to_user_id INT, 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
