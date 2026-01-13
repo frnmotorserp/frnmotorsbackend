@@ -24,6 +24,16 @@ CREATE TABLE invoice_master (
     CONSTRAINT fk_vendor_id FOREIGN KEY (vendor_id) REFERENCES vendor_master(vendor_id) ON DELETE CASCADE
 );
 
+ALTER TABLE invoice_master
+ADD COLUMN total_invoice_rounded NUMERIC(12, 0),
+ADD COLUMN rounding_difference NUMERIC(12, 2);
+
+UPDATE invoice_master
+SET 
+    total_invoice_rounded = ROUND(total_invoice_amount),
+    rounding_difference = ROUND(total_invoice_amount) - total_invoice_amount;
+
+
 CREATE TABLE invoice_item (
     invoice_item_id SERIAL PRIMARY KEY,
     invoice_id INTEGER NOT NULL REFERENCES invoice_master(invoice_id) ON DELETE CASCADE,
@@ -62,6 +72,7 @@ CREATE TABLE payment_tracking_master (
 
 CREATE TABLE cashbook (
     id SERIAL PRIMARY KEY,
+    expense_category_id INT REFERENCES expense_category_master(expense_category_id) ON DELETE SET NULL,
     entry_date DATE NOT NULL DEFAULT CURRENT_DATE,
     description TEXT,
     amount NUMERIC(12,2) NOT NULL,
@@ -74,3 +85,99 @@ CREATE TABLE cash_ledger_balance (
     last_update TEXT,
     balance NUMERIC(12,2) NOT NULL DEFAULT 0
 );
+
+CREATE TABLE bank_master (
+    bank_id SERIAL PRIMARY KEY,
+    bank_name VARCHAR(100) NOT NULL,
+    branch_name VARCHAR(100),
+    ifsc_code VARCHAR(11) UNIQUE NOT NULL,
+    micr_code VARCHAR(20),
+    account_number VARCHAR(20),
+    account_type VARCHAR(20) CHECK (account_type IN ('Savings', 'Current', 'OD', 'CC')),
+    contact_number VARCHAR(15),
+    email_id VARCHAR(100),
+    address TEXT,
+    city VARCHAR(50),
+    state VARCHAR(50),
+    pincode VARCHAR(10),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+
+CREATE TABLE bank_transaction_tracker (
+    transaction_id SERIAL PRIMARY KEY,
+     expense_category_id INT REFERENCES expense_category_master(expense_category_id) ON DELETE SET NULL,
+    bank_id INT NOT NULL REFERENCES bank_master(bank_id) ON DELETE CASCADE,
+    transaction_date DATE NOT NULL,
+    transaction_type VARCHAR(20) CHECK (transaction_type IN ('IN', 'OUT')),
+    reference_no VARCHAR(50),
+    narration TEXT,
+    amount NUMERIC(15,2) NOT NULL CHECK (amount >= 0),
+    balance_after_txn NUMERIC(15,2),
+    mode_of_transaction VARCHAR(20) CHECK (mode_of_transaction IN ('Cash', 'Cheque', 'NEFT', 'RTGS', 'IMPS', 'UPI', 'DD')),
+    remarks TEXT,
+    created_by VARCHAR(50),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+
+-- Table to store running balance for each bank account
+CREATE TABLE bank_ledger_balance (
+    id SERIAL PRIMARY KEY,
+    bank_id INT NOT NULL,                     -- Reference to bank account
+    balance NUMERIC(18,2) NOT NULL DEFAULT 0, -- Latest balance
+    last_update TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
+);
+
+-- Index for faster lookup by bank_id
+CREATE INDEX idx_bank_ledger_balance_bank_id
+ON bank_ledger_balance(bank_id);
+
+
+
+CREATE TABLE expense_category_master (
+  expense_category_id SERIAL PRIMARY KEY,
+  expense_category_name VARCHAR(255) NOT NULL,
+  expense_type VARCHAR(20) CHECK (expense_type IN ('DIRECT', 'INDIRECT')) NOT NULL,
+  description TEXT,
+  active_flag CHAR(1) DEFAULT 'Y' CHECK (active_flag IN ('Y', 'N')),
+  created_by INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_by INT,
+  updated_at TIMESTAMP
+);
+
+
+
+
+
+
+
+
+
+********* DB Script for mr new feature *********
+CREATE TABLE expense_category_master (
+  expense_category_id SERIAL PRIMARY KEY,
+  expense_category_name VARCHAR(255) NOT NULL,
+  expense_type VARCHAR(50),
+  description TEXT,
+  active_flag CHAR(1) DEFAULT 'Y' CHECK (active_flag IN ('Y', 'N')),
+  created_by INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_by INT,
+  updated_at TIMESTAMP
+);
+
+
+-- Step 1: Add the column (if it doesn’t already exist)
+ALTER TABLE bank_transaction_tracker
+ADD COLUMN IF NOT EXISTS expense_category_id INT;
+
+-- Step 2: Add the foreign key constraint (with ON DELETE SET NULL)
+ALTER TABLE bank_transaction_tracker
+ADD CONSTRAINT fk_bank_txn_expense_category
+FOREIGN KEY (expense_category_id)
+REFERENCES expense_category_master(expense_category_id)
+ON DELETE SET NULL;

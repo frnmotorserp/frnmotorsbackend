@@ -1,0 +1,120 @@
+/*
+    Vendor payment master
+    Used for advance payments, bulk settlements, opening balance adjustments, etc.
+    Automatically links with cashbook or bankbook
+*/
+
+CREATE TABLE vendor_payment_master (
+    vendor_payment_id SERIAL PRIMARY KEY,
+
+    vendor_id INT NOT NULL
+        REFERENCES vendor_master(vendor_id) ON DELETE CASCADE,
+
+    payment_date DATE NOT NULL DEFAULT CURRENT_DATE,
+
+    payment_amount NUMERIC(12,2) NOT NULL CHECK (payment_amount > 0),
+
+    payment_method VARCHAR(10) NOT NULL
+        CHECK (payment_method IN ('CASH', 'BANK')),
+
+    -- Accounting references
+    cashbook_id INT
+        REFERENCES cashbook(id),
+
+    bank_transaction_id INT
+        REFERENCES bank_transaction_tracker(transaction_id),
+
+    bank_id INT
+        REFERENCES bank_master(bank_id),
+
+    transaction_reference VARCHAR(100),
+    payment_notes TEXT,
+
+    created_by INT
+        REFERENCES users(user_id),
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    is_deleted BOOLEAN DEFAULT FALSE,
+
+    -- Payment source validation
+    CONSTRAINT chk_vendor_payment_source CHECK (
+        (
+            payment_method = 'CASH'
+            AND cashbook_id IS NOT NULL
+            AND bank_transaction_id IS NULL
+            AND bank_id IS NULL
+        )
+        OR
+        (
+            payment_method = 'BANK'
+            AND bank_transaction_id IS NOT NULL
+            AND bank_id IS NOT NULL
+            AND cashbook_id IS NULL
+        )
+    )
+);
+
+
+CREATE INDEX idx_vendor_payment_vendor_date 
+ON vendor_payment_master (vendor_id, payment_date DESC)
+WHERE is_deleted = FALSE;
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+    Creating vendor discount master
+    Used to track discount / rebate amounts given by vendor
+    Independent of purchase invoice or PO
+*/
+
+CREATE TABLE vendor_discount_master (
+    vendor_discount_id SERIAL PRIMARY KEY,
+
+    vendor_id INT NOT NULL
+        REFERENCES vendor_master(vendor_id) ON DELETE CASCADE,
+
+    discount_date DATE NOT NULL DEFAULT CURRENT_DATE,
+
+    discount_amount NUMERIC(12,2) NOT NULL
+        CHECK (discount_amount > 0),
+
+    reason TEXT,
+
+    created_by INT
+        REFERENCES users(user_id),
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    is_deleted BOOLEAN DEFAULT FALSE
+);
+
+
+
+CREATE INDEX idx_vendor_discount_vendor
+ON vendor_discount_master (vendor_id)
+WHERE is_deleted = FALSE;
+
+CREATE INDEX idx_vendor_discount_date
+ON vendor_discount_master (discount_date)
+WHERE is_deleted = FALSE;
+
+CREATE INDEX idx_vendor_discount_vendor_date
+ON vendor_discount_master (vendor_id, discount_date DESC)
+WHERE is_deleted = FALSE;
+
+
+
+
+
+

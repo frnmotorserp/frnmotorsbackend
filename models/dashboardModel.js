@@ -125,7 +125,7 @@ export const getDashboardSummary = async () => {
 
         // 2. Total order value today
         const totalValueTodayQuery = `
-            SELECT COALESCE(SUM(grand_total), 0.00) AS total_value
+            SELECT COALESCE(SUM(grand_total_rounded), 0.00) AS total_value
             FROM sales_order_master
             WHERE status != 'CANCELLED' AND order_date = CURRENT_DATE;
         `;
@@ -141,7 +141,7 @@ export const getDashboardSummary = async () => {
 
       // 2. Total order value yesterday
       const totalValueYesterdayQuery = `
-          SELECT COALESCE(SUM(grand_total), 0.00) AS total_value
+          SELECT COALESCE(SUM(grand_total_rounded), 0.00) AS total_value
           FROM sales_order_master
           WHERE status != 'CANCELLED' AND order_date = CURRENT_DATE - 1;
       `;
@@ -159,7 +159,7 @@ export const getDashboardSummary = async () => {
 
         // 4. Total order value this month
         const totalValueMonthQuery = `
-            SELECT COALESCE(SUM(grand_total), 0.00) AS total_value
+            SELECT COALESCE(SUM(grand_total_rounded), 0.00) AS total_value
             FROM sales_order_master
             WHERE status != 'CANCELLED' AND order_date >= date_trunc('month', CURRENT_DATE)
             AND order_date < date_trunc('month', CURRENT_DATE) + INTERVAL '1 month';
@@ -177,7 +177,7 @@ export const getDashboardSummary = async () => {
 
         // 6. Total order value previous month
         const totalValuePrevMonthQuery = `
-            SELECT COALESCE(SUM(grand_total), 0.00) AS total_value
+            SELECT COALESCE(SUM(grand_total_rounded), 0.00) AS total_value
             FROM sales_order_master
             WHERE status != 'CANCELLED' AND order_date >= date_trunc('month', CURRENT_DATE - interval '1 month')
               AND order_date < date_trunc('month', CURRENT_DATE);
