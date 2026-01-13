@@ -27,7 +27,8 @@ const PORT = process.env.PORT || 5080;
 // Enable All CORS Requests
 app.use(cors({
   //origin: 'http://localhost:4000',  
-  origin: "https://frnmotors.onrender.com",  
+  //origin: "https://frnmotors.onrender.com",  
+  origin: "https://bandhumotors-test.onrender.com",  
   credentials: true,               
 }));
 app.use(express.json());
