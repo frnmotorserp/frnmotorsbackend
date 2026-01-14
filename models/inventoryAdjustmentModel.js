@@ -52,7 +52,7 @@ export const adjustInventory = async (adjustments = [], userId) => {
         status, modified_by, last_updated
       )
       VALUES ($1, $2, $3, 'in_stock', $4, NOW())
-      ON ON CONFLICT (product_id, location_id, serial_number) 
+      ON CONFLICT (product_id, location_id, serial_number) 
       DO NOTHING;
     `,
           [productId, locationId, serial, userId]
