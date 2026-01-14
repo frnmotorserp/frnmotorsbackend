@@ -1,0 +1,7 @@
+ALTER TABLE product_serials
+DROP CONSTRAINT product_serials_serial_number_key;
+
+
+ALTER TABLE product_serials
+ADD CONSTRAINT uq_product_location_serial
+UNIQUE (product_id, location_id, serial_number);
