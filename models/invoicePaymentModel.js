@@ -929,8 +929,8 @@ export const getVendorInvoicesWithPaymentsFY = async (vendorId) => {
       fyEnd = `${year}-03-31`;
     }
     //Changes as per 19-01-2026 Due to Business Requirement Changes- Invoice From 2020 Jan till Today
-    fyStart = "2020-01-01",
-    fyEnd = new Date().toISOString().slice(0, 10),
+    fyStart = "2020-01-01";
+    fyEnd = new Date().toISOString().slice(0, 10);
 
     let query = `
       SELECT 
