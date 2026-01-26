@@ -4,7 +4,7 @@ import pool from "../configs/db.js";
 export const saveOrUpdateGRN = async (grnData, items = []) => {
   const client = await pool.connect();
   try {
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     const {
       grnId,
@@ -14,7 +14,7 @@ export const saveOrUpdateGRN = async (grnData, items = []) => {
       grnNumber,
       grnDate,
       remarks,
-      userId
+      userId,
     } = grnData;
 
     let savedGrnId = grnId;
@@ -27,7 +27,13 @@ export const saveOrUpdateGRN = async (grnData, items = []) => {
         WHERE grn_id = $7
       `;
       await client.query(updateQuery, [
-        poId, vendorId, locationId, grnNumber, grnDate, remarks, grnId
+        poId,
+        vendorId,
+        locationId,
+        grnNumber,
+        grnDate,
+        remarks,
+        grnId,
       ]);
     } else {
       const insertQuery = `
@@ -37,7 +43,13 @@ export const saveOrUpdateGRN = async (grnData, items = []) => {
         RETURNING grn_id;
       `;
       const result = await client.query(insertQuery, [
-        poId, vendorId, locationId, grnNumber, grnDate, remarks, userId
+        poId,
+        vendorId,
+        locationId,
+        grnNumber,
+        grnDate,
+        remarks,
+        userId,
       ]);
       savedGrnId = result.rows[0].grn_id;
     }
@@ -48,10 +60,21 @@ export const saveOrUpdateGRN = async (grnData, items = []) => {
     // Insert new items
     for (const item of items) {
       const {
-        poItemId, productId, quantityReceived, unitPrice,
-        cgstPercent, sgstPercent, igstPercent,
-        cgstAmount, sgstAmount, igstAmount,
-        totalAmount, batchNumber, expiryDate, uom, serialNumbersAdd
+        poItemId,
+        productId,
+        quantityReceived,
+        unitPrice,
+        cgstPercent,
+        sgstPercent,
+        igstPercent,
+        cgstAmount,
+        sgstAmount,
+        igstAmount,
+        totalAmount,
+        batchNumber,
+        expiryDate,
+        uom,
+        serialNumbersAdd,
       } = item;
 
       const insertItemQuery = `
@@ -69,10 +92,21 @@ export const saveOrUpdateGRN = async (grnData, items = []) => {
       `;
 
       await client.query(insertItemQuery, [
-        savedGrnId, poItemId, productId, quantityReceived, unitPrice,
-        cgstPercent, sgstPercent, igstPercent,
-        cgstAmount, sgstAmount, igstAmount,
-        totalAmount, batchNumber, expiryDate, uom
+        savedGrnId,
+        poItemId,
+        productId,
+        quantityReceived,
+        unitPrice,
+        cgstPercent,
+        sgstPercent,
+        igstPercent,
+        cgstAmount,
+        sgstAmount,
+        igstAmount,
+        totalAmount,
+        batchNumber,
+        expiryDate,
+        uom,
       ]);
 
       // Update inventory_stock
@@ -89,24 +123,26 @@ export const saveOrUpdateGRN = async (grnData, items = []) => {
         productId,
         locationId,
         quantityReceived,
-        `GRN#${savedGrnId}#ADDINV`
+        `GRN#${savedGrnId}#ADDINV`,
       ]);
 
       if (serialNumbersAdd && serialNumbersAdd?.length > 0) {
         for (const serial of serialNumbersAdd) {
-          await client.query(`
+          await client.query(
+            `
           INSERT INTO product_serials (
             product_id, location_id, serial_number,
             status, modified_by, last_updated
           )
           VALUES ($1, $2, $3, 'in_stock', $4, NOW())
-          ON CONFLICT (serial_number) DO NOTHING;
-        `, [productId, locationId, serial, userId]);
+          ON CONFLICT (product_id, location_id, serial_number) 
+          DO NOTHING;
+        `,
+            [productId, locationId, serial, userId]
+          );
         }
       }
     }
-
-
 
     // Change PO Status to VALIDATE GOODS
     const changePOStatusQuery = `
@@ -117,12 +153,12 @@ export const saveOrUpdateGRN = async (grnData, items = []) => {
     RETURNING *;
   `;
 
-    await client.query(changePOStatusQuery, ['VALIDATE GOODS', poId]);
+    await client.query(changePOStatusQuery, ["VALIDATE GOODS", poId]);
 
-    await client.query('COMMIT');
+    await client.query("COMMIT");
     return { success: true, grnId: savedGrnId };
   } catch (err) {
-    await client.query('ROLLBACK');
+    await client.query("ROLLBACK");
     throw err;
   } finally {
     client.release();
@@ -134,7 +170,7 @@ export const getGRNs = async ({ vendorId, poId, startDate, endDate }) => {
   let conditions = [];
   let values = [];
   let idx = 1;
-  console.log(vendorId, poId, startDate, endDate)
+  console.log(vendorId, poId, startDate, endDate);
   if (vendorId) {
     conditions.push(`gm.vendor_id = $${idx++}`);
     values.push(vendorId);
@@ -150,7 +186,8 @@ export const getGRNs = async ({ vendorId, poId, startDate, endDate }) => {
     values.push(startDate, endDate);
   }
 
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const whereClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
   const query = `
     SELECT gm.*, v.vendor_name, p.po_number
@@ -176,7 +213,6 @@ export const getGRNItems = async (grnId) => {
   const { rows } = await pool.query(query, [grnId]);
   return rows;
 };
-
 
 export const getGRNsWithItemsByPO = async (poId) => {
   const query = `
