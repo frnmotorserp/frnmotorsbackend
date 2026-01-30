@@ -22,6 +22,7 @@ import {
   getVendorDiscounts,
   softDeleteVendorPayment,
   softDeleteInvoice,
+  softDeleteCashbookEntry,
 } from "../models/invoicePaymentModel.js";
 // Get Invoices by Filters (vendorId, poId, startDate, endDate)
 export const getInvoicesByFiltersController = async (req, res) => {
@@ -829,5 +830,35 @@ export const softDeleteInvoiceController = async (req, res) => {
       message: error.message || "Failed to delete invoice",
       responseObject: null,
     });
+  }
+};
+
+export const softDeleteCashbookController = async (req, res) => {
+  try {
+    const { cashbookId } = req.body;
+    const deletedByUserId = req.user?.userId;
+
+    if (!cashbookId) {
+      return res.status(400).json({
+        status: false,
+        message: "Cashbook ID is required",
+      });
+    }
+
+    const result = await softDeleteCashbookEntry(cashbookId, deletedByUserId);
+
+    return res.json({
+      status: true,
+      message: "Cashbook entry deleted successfully",
+      responseObject: result,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      status: false,
+      message: error.message || "Failed to delete cashbook entry",
+    });
+  } finally {
   }
 };
