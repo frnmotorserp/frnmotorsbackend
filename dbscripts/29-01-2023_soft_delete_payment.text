@@ -1,0 +1,25 @@
+ALTER TABLE vendor_payment_master
+ADD COLUMN deleted_at TIMESTAMP,
+ADD COLUMN deleted_by INT REFERENCES users(user_id);
+
+ALTER TABLE cashbook
+ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE,
+ADD COLUMN deleted_at TIMESTAMP,
+ADD COLUMN deleted_by INT REFERENCES users(user_id);
+
+ALTER TABLE bank_transaction_tracker
+ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE,
+ADD COLUMN deleted_at TIMESTAMP,
+ADD COLUMN deleted_by INT REFERENCES users(user_id);
+
+ALTER TABLE party_payment_master
+ADD COLUMN deleted_at TIMESTAMP,
+ADD COLUMN deleted_by INT REFERENCES users(user_id);
+
+ALTER TABLE invoice_master
+ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE,
+ADD COLUMN deleted_at TIMESTAMP,
+ADD COLUMN deleted_by INTEGER;
+
+
+

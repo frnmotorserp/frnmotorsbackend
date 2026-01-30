@@ -20,6 +20,8 @@ import {
   getVendorPayments,
   createVendorDiscount,
   getVendorDiscounts,
+  softDeleteVendorPayment,
+  softDeleteInvoice,
 } from "../models/invoicePaymentModel.js";
 // Get Invoices by Filters (vendorId, poId, startDate, endDate)
 export const getInvoicesByFiltersController = async (req, res) => {
@@ -716,6 +718,116 @@ export const getVendorDiscountsController = async (req, res) => {
       status: false,
       message: error.message || "Failed to fetch vendor discounts.",
       responseObject: [],
+    });
+  }
+};
+
+/**
+ * Soft Delete Vendor Payment
+ * Automatically reverses cash/bank ledger if linked
+ */
+export const softDeleteVendorPaymentController = async (req, res) => {
+  try {
+    const { vendorPaymentId } = req.body;
+
+    // Assuming logged-in user is attached to req.user
+    const deletedByUserId = req.user?.userId;
+
+    /* ===================== VALIDATION ===================== */
+    if (!vendorPaymentId) {
+      return res.status(400).json({
+        sessionDTO: { status: false, reasonCode: "validation_error" },
+        status: false,
+        message: "Vendor payment ID is required.",
+        responseObject: null,
+      });
+    }
+
+    if (!deletedByUserId) {
+      return res.status(401).json({
+        sessionDTO: { status: false, reasonCode: "unauthorized" },
+        status: false,
+        message: "User not authenticated.",
+        responseObject: null,
+      });
+    }
+
+    /* ===================== DELETE PAYMENT ===================== */
+    const result = await softDeleteVendorPayment(
+      vendorPaymentId,
+      deletedByUserId
+    );
+
+    /* ===================== RESPONSE ===================== */
+    return res.json({
+      sessionDTO: { status: true, reasonCode: "success" },
+      status: true,
+      message: "Vendor payment deleted successfully.",
+      responseObject: result,
+    });
+  } catch (error) {
+    console.error("Error deleting vendor payment:", error);
+
+    // Business-safe error mapping
+    let message = "Failed to delete vendor payment.";
+    let reasonCode = "error";
+
+    if (error.message === "Vendor payment not found or already deleted") {
+      message = error.message;
+      reasonCode = "not_found";
+    }
+
+    return res.status(500).json({
+      sessionDTO: { status: false, reasonCode },
+      status: false,
+      message,
+      responseObject: null,
+    });
+  }
+};
+
+/**
+ * Soft Delete Invoice
+ */
+export const softDeleteInvoiceController = async (req, res) => {
+  try {
+    const { invoiceId } = req.body;
+    const deletedByUserId = req.user?.userId;
+
+    if (!invoiceId) {
+      return res.status(400).json({
+        sessionDTO: { status: false, reasonCode: "validation_error" },
+        status: false,
+        message: "Invoice ID is required",
+        responseObject: null,
+      });
+    }
+
+    if (!deletedByUserId) {
+      return res.status(401).json({
+        sessionDTO: { status: false, reasonCode: "unauthorized" },
+        status: false,
+        message: "User not authenticated",
+        responseObject: null,
+      });
+    }
+
+    const result = await softDeleteInvoice(invoiceId, deletedByUserId);
+
+    return res.json({
+      sessionDTO: { status: true, reasonCode: "success" },
+      status: true,
+      message: "Invoice deleted successfully",
+      responseObject: result,
+    });
+  } catch (error) {
+    console.error("Soft delete invoice error:", error);
+
+    return res.status(500).json({
+      sessionDTO: { status: false, reasonCode: "error" },
+      status: false,
+      message: error.message || "Failed to delete invoice",
+      responseObject: null,
     });
   }
 };

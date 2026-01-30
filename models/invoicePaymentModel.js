@@ -335,7 +335,7 @@ export const getInvoicesByFilters = async (
       FROM invoice_master im
       LEFT JOIN purchase_order po ON im.po_id = po.po_id
       LEFT JOIN vendor_master v ON im.vendor_id = v.vendor_id
-      WHERE im.invoice_date BETWEEN $1 AND $2
+      WHERE im.invoice_date BETWEEN $1 AND $2 AND im.is_deleted IS NOT TRUE
     `;
 
     const params = [startDate, endDate];
@@ -606,7 +606,7 @@ export const getInvoicePaymentSummaryByPoId = async (poId) => {
         COALESCE(SUM(ptm.payment_amount), 0) AS total_paid
       FROM invoice_master im
       LEFT JOIN payment_tracking_master ptm ON im.invoice_id = ptm.invoice_id
-      WHERE im.po_id = $1
+      WHERE im.po_id = $1 AND im.is_deleted IS NOT TRUE 
       GROUP BY im.invoice_id
       ORDER BY im.invoice_date DESC
     `;
@@ -685,7 +685,7 @@ export const getCashEntries = async (startDate, endDate, expenseCategoryId) => {
               LEFT JOIN 
                   expense_category_master ecm
               ON 
-                  btt.expense_category_id = ecm.expense_category_id WHERE 1=1 `;
+                  btt.expense_category_id = ecm.expense_category_id WHERE 1=1 AND (btt.is_deleted IS NOT TRUE)`;
   const params = [];
 
   if (startDate) {
@@ -841,7 +841,7 @@ LEFT JOIN
 ON 
     btt.expense_category_id = ecm.expense_category_id
 WHERE 
-    btt.bank_id = $1`;
+    btt.bank_id = $1 AND (btt.is_deleted IS NOT TRUE)`;
   const params = [bank_id];
 
   if (startDate) {
@@ -954,7 +954,7 @@ export const getVendorInvoicesWithPaymentsFY = async (vendorId) => {
       LEFT JOIN purchase_order po ON im.po_id = po.po_id
       LEFT JOIN payment_tracking_master pt ON im.invoice_id = pt.invoice_id
       WHERE im.vendor_id = $1
-        AND im.invoice_date BETWEEN $2 AND $3
+        AND im.invoice_date BETWEEN $2 AND $3 AND im.is_deleted IS NOT TRUE
       GROUP BY po.po_number, im.invoice_number, im.invoice_date, im.total_invoice_rounded
       ORDER BY po.po_number, im.invoice_date DESC
     `;
@@ -1280,4 +1280,176 @@ export const getVendorDiscounts = async ({
   } finally {
     client.release();
   }
+};
+
+export const softDeleteVendorPayment = async (
+  vendorPaymentId,
+  deletedByUserId
+) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    /* ===============================
+         1. Lock vendor payment
+      =============================== */
+    const paymentRes = await client.query(
+      `
+          SELECT *
+          FROM vendor_payment_master
+          WHERE vendor_payment_id = $1
+            AND is_deleted = FALSE
+          FOR UPDATE
+      `,
+      [vendorPaymentId]
+    );
+
+    if (paymentRes.rows.length === 0) {
+      throw new Error("Vendor payment not found or already deleted");
+    }
+
+    const payment = paymentRes.rows[0];
+
+    /* ===============================
+         2. CASH PAYMENT REVERSAL
+      =============================== */
+    if (payment.payment_method === "CASH" && payment.cashbook_id) {
+      const cashRes = await client.query(
+        `
+              SELECT amount, entry_type
+              FROM cashbook
+              WHERE id = $1
+                AND is_deleted = FALSE
+              FOR UPDATE
+          `,
+        [payment.cashbook_id]
+      );
+
+      if (cashRes.rows.length > 0) {
+        const { amount, entry_type } = cashRes.rows[0];
+
+        // Reverse balance
+        const balanceDelta = entry_type === "OUT" ? amount : -amount;
+
+        await client.query(
+          `
+                  UPDATE cash_ledger_balance
+                  SET balance = balance + $1,
+                      last_update = NOW()
+              `,
+          [balanceDelta]
+        );
+
+        // Soft delete cashbook
+        await client.query(
+          `
+                  UPDATE cashbook
+                  SET is_deleted = TRUE,
+                      deleted_at = NOW(),
+                      deleted_by = $2
+                  WHERE id = $1
+              `,
+          [payment.cashbook_id, deletedByUserId]
+        );
+      }
+    }
+
+    /* ===============================
+         3. BANK PAYMENT REVERSAL
+      =============================== */
+    if (
+      payment.payment_method === "BANK" &&
+      payment.bank_transaction_id &&
+      payment.bank_id
+    ) {
+      const bankRes = await client.query(
+        `
+              SELECT amount, transaction_type
+              FROM bank_transaction_tracker
+              WHERE transaction_id = $1
+                AND is_deleted = FALSE
+              FOR UPDATE
+          `,
+        [payment.bank_transaction_id]
+      );
+
+      if (bankRes.rows.length > 0) {
+        const { amount, transaction_type } = bankRes.rows[0];
+
+        const balanceDelta = transaction_type === "OUT" ? amount : -amount;
+
+        await client.query(
+          `
+                  UPDATE bank_ledger_balance
+                  SET balance = balance + $1,
+                      updated_at = NOW()
+                  WHERE bank_id = $2
+              `,
+          [balanceDelta, payment.bank_id]
+        );
+
+        await client.query(
+          `
+                  UPDATE bank_transaction_tracker
+                  SET is_deleted = TRUE,
+                      deleted_at = NOW(),
+                      deleted_by = $2
+                  WHERE transaction_id = $1
+              `,
+          [payment.bank_transaction_id, deletedByUserId]
+        );
+      }
+    }
+
+    /* ===============================
+         4. Soft delete vendor payment
+      =============================== */
+    await client.query(
+      `
+          UPDATE vendor_payment_master
+          SET is_deleted = TRUE,
+              deleted_at = NOW(),
+              deleted_by = $2
+          WHERE vendor_payment_id = $1
+      `,
+      [vendorPaymentId, deletedByUserId]
+    );
+
+    await client.query("COMMIT");
+
+    return {
+      success: true,
+      vendorPaymentId,
+    };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+};
+
+export const softDeleteInvoice = async (invoiceId, userId) => {
+  const client = await pool.connect();
+  const result = await client.query(
+    `
+    UPDATE invoice_master
+    SET
+      is_deleted = TRUE,
+      deleted_at = NOW(),
+      deleted_by = $2,
+      updated_at = NOW()
+    WHERE invoice_id = $1
+      AND is_deleted = FALSE
+    RETURNING *
+    `,
+    [invoiceId, userId]
+  );
+
+  if (result.rowCount === 0) {
+    throw new Error("Invoice not found or already deleted");
+  }
+
+  return result.rows[0];
 };

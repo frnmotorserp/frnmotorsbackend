@@ -22,6 +22,7 @@ import {
   createSalesPartyDiscountController,
   getSalesPartyDiscountsController,
   deleteSalesPartyDiscountController,
+  softDeletePartyPaymentController,
 } from "../controllers/salesOrderController.js";
 
 const router = express.Router();
@@ -111,7 +112,6 @@ router.post(
 router.post("/cancelSalesOrder", verifyToken, cancelSalesOrderController);
 router.post("/generateEInvoiceJSON", verifyToken, generateEInvoiceJSON);
 
-
 /* =========================================================
    Sales Party Discount Routes
    ========================================================= */
@@ -143,5 +143,10 @@ router.post(
   deleteSalesPartyDiscountController
 );
 
+router.post(
+  "/softDeletePartyPayment",
+  verifyToken,
+  softDeletePartyPaymentController
+);
 
 export default router;
