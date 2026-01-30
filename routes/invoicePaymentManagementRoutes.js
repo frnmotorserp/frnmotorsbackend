@@ -24,6 +24,7 @@ import {
   getVendorDiscountsController,
   softDeleteVendorPaymentController,
   softDeleteInvoiceController,
+  softDeleteCashbookController,
 } from "../controllers/invoicePaymentController.js";
 
 import {
@@ -89,10 +90,7 @@ router.post(
   verifyToken,
   softDeleteVendorPaymentController
 );
-router.post(
-  "/softDeleteInvoice",
-  verifyToken,
-  softDeleteInvoiceController
-);
+router.post("/softDeleteInvoice", verifyToken, softDeleteInvoiceController);
+router.post("/softDeleteCashbook", verifyToken, softDeleteCashbookController);
 
 export default router;

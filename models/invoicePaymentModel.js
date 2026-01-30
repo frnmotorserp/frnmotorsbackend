@@ -1453,3 +1453,69 @@ export const softDeleteInvoice = async (invoiceId, userId) => {
 
   return result.rows[0];
 };
+
+export const softDeleteCashbookEntry = async (cashbookId, deletedByUserId) => {
+  const client = await pool.connect();
+
+  await client.query("BEGIN");
+
+  try {
+    /* Fetch cashbook entry */
+    const { rows } = await client.query(
+      `
+      SELECT id, amount, entry_type, is_deleted
+      FROM cashbook
+      WHERE id = $1
+      FOR UPDATE
+      `,
+      [cashbookId]
+    );
+
+    if (rows.length === 0) {
+      throw new Error("Cashbook entry not found");
+    }
+
+    const entry = rows[0];
+
+    if (entry.is_deleted) {
+      throw new Error("Cashbook entry already deleted");
+    }
+
+    /* Reverse ledger impact */
+    const ledgerAdjustment =
+      entry.entry_type === "IN" ? -entry.amount : entry.amount;
+
+    /* Update cash ledger */
+    await client.query(
+      `
+      UPDATE cash_ledger_balance
+      SET balance = balance + $1
+      WHERE id = 1
+      `,
+      [ledgerAdjustment]
+    );
+
+    /* Soft delete cashbook entry */
+    await client.query(
+      `
+      UPDATE cashbook
+      SET
+        is_deleted = true,
+        deleted_at = NOW(),
+        deleted_by = $1
+      WHERE id = $2
+      `,
+      [deletedByUserId, cashbookId]
+    );
+
+    await client.query("COMMIT");
+
+    return {
+      cashbookId,
+      reversedAmount: ledgerAdjustment,
+    };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  }
+};
