@@ -610,9 +610,6 @@ export const getYearWiseProductOrderCount = async ({
   }
 };
 
-
-
-
 export const createSalesPartyDiscount = async (discountData) => {
   const client = await pool.connect();
 
@@ -666,7 +663,6 @@ export const createSalesPartyDiscount = async (discountData) => {
   }
 };
 
-
 /**
  * Get Party Discounts
  * Party Wise Discount Ledger
@@ -719,7 +715,6 @@ export const getSalesPartyDiscounts = async ({
   }
 };
 
-
 export const deleteSalesPartyDiscount = async ({
   salesPartyDiscountId,
   deletedBy,
@@ -737,6 +732,156 @@ export const deleteSalesPartyDiscount = async ({
     );
 
     return true;
+  } finally {
+    client.release();
+  }
+};
+
+export const softDeletePartyPayment = async (
+  partyPaymentId,
+  deletedByUserId
+) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    /* ===============================
+       1. Lock party payment
+    =============================== */
+    const paymentRes = await client.query(
+      `
+        SELECT *
+        FROM party_payment_master
+        WHERE party_payment_id = $1
+          AND is_deleted = FALSE
+        FOR UPDATE
+      `,
+      [partyPaymentId]
+    );
+
+    if (paymentRes.rows.length === 0) {
+      throw new Error("Party payment not found or already deleted");
+    }
+
+    const payment = paymentRes.rows[0];
+
+    /* ===============================
+       2. CASH PAYMENT REVERSAL
+    =============================== */
+    if (payment.payment_method === "CASH" && payment.cashbook_id) {
+      const cashRes = await client.query(
+        `
+          SELECT amount, entry_type
+          FROM cashbook
+          WHERE id = $1
+            AND is_deleted = FALSE
+          FOR UPDATE
+        `,
+        [payment.cashbook_id]
+      );
+
+      if (cashRes.rows.length > 0) {
+        const { amount, entry_type } = cashRes.rows[0];
+
+        // Reverse cash balance
+        // Original OUT → add back
+        // Original IN  → subtract
+        const balanceDelta = entry_type === "OUT" ? amount : -amount;
+
+        await client.query(
+          `
+            UPDATE cash_ledger_balance
+            SET balance = balance + $1,
+                last_update = NOW()
+          `,
+          [balanceDelta]
+        );
+
+        await client.query(
+          `
+            UPDATE cashbook
+            SET is_deleted = TRUE,
+                deleted_at = NOW(),
+                deleted_by = $2
+            WHERE id = $1
+          `,
+          [payment.cashbook_id, deletedByUserId]
+        );
+      }
+    }
+
+    /* ===============================
+       3. BANK PAYMENT REVERSAL
+    =============================== */
+    if (
+      payment.payment_method === "BANK" &&
+      payment.bank_transaction_id &&
+      payment.bank_id
+    ) {
+      const bankRes = await client.query(
+        `
+          SELECT amount, transaction_type
+          FROM bank_transaction_tracker
+          WHERE transaction_id = $1
+            AND is_deleted = FALSE
+          FOR UPDATE
+        `,
+        [payment.bank_transaction_id]
+      );
+
+      if (bankRes.rows.length > 0) {
+        const { amount, transaction_type } = bankRes.rows[0];
+
+        // Reverse bank balance
+        const balanceDelta = transaction_type === "OUT" ? amount : -amount;
+
+        await client.query(
+          `
+            UPDATE bank_ledger_balance
+            SET balance = balance + $1,
+                updated_at = NOW()
+            WHERE bank_id = $2
+          `,
+          [balanceDelta, payment.bank_id]
+        );
+
+        await client.query(
+          `
+            UPDATE bank_transaction_tracker
+            SET is_deleted = TRUE,
+                deleted_at = NOW(),
+                deleted_by = $2
+            WHERE transaction_id = $1
+          `,
+          [payment.bank_transaction_id, deletedByUserId]
+        );
+      }
+    }
+
+    /* ===============================
+       4. Soft delete party payment
+    =============================== */
+    await client.query(
+      `
+        UPDATE party_payment_master
+        SET is_deleted = TRUE,
+            deleted_at = NOW(),
+            deleted_by = $2
+        WHERE party_payment_id = $1
+      `,
+      [partyPaymentId, deletedByUserId]
+    );
+
+    await client.query("COMMIT");
+
+    return {
+      success: true,
+      partyPaymentId,
+    };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
   } finally {
     client.release();
   }

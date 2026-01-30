@@ -24,6 +24,7 @@ import {
   createSalesPartyDiscount,
   getSalesPartyDiscounts,
   deleteSalesPartyDiscount,
+  softDeletePartyPayment,
 } from "../models/paymentTrackingModel.js";
 
 // 1. Save or Update Sales Order
@@ -849,7 +850,6 @@ export const getYearWiseProductOrderCountController = async (req, res) => {
   }
 };
 
-
 /**
  * Create Sales Party Discount
  */
@@ -985,7 +985,6 @@ export const getSalesPartyDiscountsController = async (req, res) => {
   }
 };
 
-
 /**
  * Delete Sales Party Discount (Soft Delete)
  */
@@ -1023,3 +1022,70 @@ export const deleteSalesPartyDiscountController = async (req, res) => {
     });
   }
 };
+
+
+/**
+ * Soft Delete Party Payment
+ * Supports CUSTOMER / DEALER
+ * Automatically reverses cash/bank ledger if linked
+ */
+export const softDeletePartyPaymentController = async (req, res) => {
+  try {
+    const { partyPaymentId } = req.body;
+
+    // Logged-in user (from auth middleware)
+    const deletedByUserId = req.user?.userId;
+
+    /* ===================== VALIDATION ===================== */
+    if (!partyPaymentId) {
+      return res.status(400).json({
+        sessionDTO: { status: false, reasonCode: "validation_error" },
+        status: false,
+        message: "Party payment ID is required.",
+        responseObject: null,
+      });
+    }
+
+    if (!deletedByUserId) {
+      return res.status(401).json({
+        sessionDTO: { status: false, reasonCode: "unauthorized" },
+        status: false,
+        message: "User not authenticated.",
+        responseObject: null,
+      });
+    }
+
+    /* ===================== DELETE PAYMENT ===================== */
+    const result = await softDeletePartyPayment(
+      partyPaymentId,
+      deletedByUserId
+    );
+
+    /* ===================== RESPONSE ===================== */
+    return res.json({
+      sessionDTO: { status: true, reasonCode: "success" },
+      status: true,
+      message: "Party payment deleted successfully.",
+      responseObject: result,
+    });
+  } catch (error) {
+    console.error("Error deleting party payment:", error);
+
+    /* ===================== ERROR MAPPING ===================== */
+    let message = "Failed to delete party payment.";
+    let reasonCode = "error";
+
+    if (error.message === "Party payment not found or already deleted") {
+      message = error.message;
+      reasonCode = "not_found";
+    }
+
+    return res.status(500).json({
+      sessionDTO: { status: false, reasonCode },
+      status: false,
+      message,
+      responseObject: null,
+    });
+  }
+};
+
