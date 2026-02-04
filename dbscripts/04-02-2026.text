@@ -1,0 +1,16 @@
+ALTER TABLE company_details
+ADD COLUMN contact VARCHAR(255);
+
+UPDATE company_details
+SET contact = '8653200285, 9883349500'
+WHERE contact IS NULL;
+
+
+ALTER TABLE company_details
+ADD COLUMN email VARCHAR(255);
+
+
+UPDATE company_details
+SET
+  email = 'frnmotorsnadia@gmail.com'
+WHERE email IS NULL;

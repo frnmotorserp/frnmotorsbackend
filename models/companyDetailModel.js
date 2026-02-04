@@ -1,4 +1,3 @@
-
 import pool from "../configs/db.js";
 /**
  * Fetches all records from the 'company_details' table.
@@ -13,6 +12,8 @@ export const getAllCompanyDetails = async () => {
       business_name AS "businessName",
       address,
       pincode,
+      contact,
+      email,
       state_id AS "stateId",
       entity_type AS "entityType",
       registration_type AS "registrationType",
